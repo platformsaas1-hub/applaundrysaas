@@ -16,6 +16,7 @@ import { CustomersPage } from './pages/CustomersPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { FinancialsPage } from './pages/FinancialsPage';
+import { AutomationCenterPage } from './pages/AutomationCenterPage';
 
 export default function App() {
   return (
@@ -90,6 +91,16 @@ export default function App() {
                   element={
                     <RoleGuard allowedRoles={['owner', 'admin', 'kasir']}>
                       <FinancialsPage />
+                    </RoleGuard>
+                  } 
+                />
+
+                {/* 8. Automation Center Dashboard */}
+                <Route 
+                  path="/automation" 
+                  element={
+                    <RoleGuard allowedRoles={['owner', 'admin', 'kasir']}>
+                      <AutomationCenterPage />
                     </RoleGuard>
                   } 
                 />

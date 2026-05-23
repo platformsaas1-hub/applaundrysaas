@@ -201,6 +201,47 @@ service cloud.firestore {
           && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
+    function isValidAutomationJob(data) {
+      return data.jobId is string && data.jobId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.type in ["send_receipt", "ready_pickup", "overdue_pickup", "partial_payment_reminder", "custom_manual"]
+          && (data.transactionId == null || (data.transactionId is string && data.transactionId.size() <= 128))
+          && (data.customerId == null || (data.customerId is string && data.customerId.size() <= 128))
+          && data.customerName is string && data.customerName.size() <= 200
+          && data.customerPhone is string && data.customerPhone.size() <= 32
+          && data.message is string && data.message.size() <= 2000
+          && data.deliveryChannel == "whatsapp"
+          && data.status in ["queued", "processing", "sent", "failed", "cancelled"]
+          && data.retryCount is number
+          && data.maxRetries is number
+          && data.createdBy is string && data.createdBy.size() <= 128
+          && data.createdByName is string && data.createdByName.size() <= 200
+          && data.triggeredBy in ["system", "manual", "status_change", "payment_update", "checkout"]
+          && (data.errorMessage == null || (data.errorMessage is string && data.errorMessage.size() <= 2000))
+          && data.isDeleted is bool
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64))
+          && (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64))
+          && (data.sentAt == null || data.sentAt is timestamp || (data.sentAt is string && data.sentAt.size() <= 64))
+          && (data.nextRetryAt == null || data.nextRetryAt is timestamp || (data.nextRetryAt is string && data.nextRetryAt.size() <= 64));
+    }
+
+    function isValidNotificationLog(data) {
+      return data.logId is string && data.logId.size() <= 128
+          && data.jobId is string && data.jobId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && (data.transactionId == null || (data.transactionId is string && data.transactionId.size() <= 128))
+          && (data.customerId == null || (data.customerId is string && data.customerId.size() <= 128))
+          && data.type is string && data.type.size() <= 100
+          && data.provider is string && data.provider.size() <= 100
+          && data.target is string && data.target.size() <= 32
+          && data.message is string && data.message.size() <= 2000
+          && data.status in ["queued", "sent", "failed"]
+          && (data.errorMessage == null || (data.errorMessage is string && data.errorMessage.size() <= 2000))
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
     // --- USER PROFILE RULES ---
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || getUserData().role == "owner");
@@ -278,6 +319,21 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow read: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
         allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidNotification(request.resource.data);
+      }
+
+      // AUTOMATION JOBS QUEUE
+      match /automationJobs/{jobId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidAutomationJob(request.resource.data);
+        allow update: if (hasTenantRole(tenantId, ["owner", "admin"]) && isValidAutomationJob(request.resource.data)) ||
+                        (hasTenantRole(tenantId, ["kasir"]) && isValidAutomationJob(request.resource.data) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'retryCount', 'nextRetryAt', 'errorMessage', 'updatedAt', 'sentAt']));
+      }
+
+      // OUTBOX AUDIT LOGS
+      match /notificationLogs/{logId} {
+        allow read: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
+        allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidNotificationLog(request.resource.data);
       }
 
       // PRE-PROCESSED DIURNAL METRIC REPORTING DB

@@ -19,6 +19,7 @@ import { POSView } from '../components/POSView';
 import { NotaDigital } from '../components/NotaDigital';
 import { Customer, Transaction, LaundryService } from '../types';
 import { calculatePaymentDetails } from '../utils/invoice';
+import { triggerAutoReceipt } from '../services/automation/automationEngine';
 
 export function POSPage() {
   const navigate = useNavigate();
@@ -279,6 +280,21 @@ export function POSPage() {
 
     try {
       await batch.commit();
+      
+      // Auto receipt scheduler trigger
+      if (tenantId && activeOutletId) {
+        const servicesSummary = txDraft.items.map(it => `${it.name} (x${it.qty})`).join(', ') || 'Layanan Laundry';
+        triggerAutoReceipt({
+          tenantId,
+          outletId: activeOutletId,
+          outletName: activeOutletObj?.name || 'LaundryKu',
+          transaction: transactionPayload,
+          servicesSummary,
+          operatorUid: currentUser?.uid || 'anonymous',
+          operatorName: userProfile?.name || 'Kasir'
+        }).catch(err => console.error('[POS Checkout Automation] Trigger error:', err));
+      }
+
       // Instantly open the invoice receipt dialog
       setSelectedInvoiceTx(transactionPayload);
     } catch (error) {

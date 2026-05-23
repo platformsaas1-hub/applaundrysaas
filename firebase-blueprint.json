@@ -281,6 +281,57 @@
         "sentByName": { "type": "string", "description": "Staff operator name profile label" }
       },
       "required": ["notificationId", "tenantId", "transactionId", "customerPhone", "templateType", "provider", "status", "createdAt", "sentBy"]
+    },
+    "automationJob": {
+      "title": "Automation Job",
+      "description": "Event-driven automation task managing queued WhatsApp or SMS messages.",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string", "description": "Unique job identifier" },
+        "tenantId": { "type": "string", "description": "Tenant owner context" },
+        "outletId": { "type": "string", "description": "Branch division context" },
+        "type": { "type": "string", "enum": ["send_receipt", "ready_pickup", "overdue_pickup", "partial_payment_reminder", "custom_manual"], "description": "Categorized job purpose" },
+        "transactionId": { "type": "string", "description": "Associated invoice tracking" },
+        "customerId": { "type": "string", "description": "Associated CRM profile" },
+        "customerName": { "type": "string", "description": "Saved customer display name" },
+        "customerPhone": { "type": "string", "description": "Destination phone target normalized format" },
+        "message": { "type": "string", "description": "Transmitted literal message" },
+        "deliveryChannel": { "type": "string", "enum": ["whatsapp"], "description": "Operational media" },
+        "status": { "type": "string", "enum": ["queued", "processing", "sent", "failed", "cancelled"], "description": "Pipeline execution status" },
+        "retryCount": { "type": "number", "description": "Counter for failed execution attempts" },
+        "maxRetries": { "type": "number", "description": "Ceiling limit bounds for automatic re-queueing" },
+        "createdBy": { "type": "string", "description": "Staff cashier Uid who registered transaction" },
+        "createdByName": { "type": "string", "description": "Cached profile names" },
+        "triggeredBy": { "type": "string", "enum": ["system", "manual", "status_change", "payment_update", "checkout"], "description": "Context driver of event creation" },
+        "errorMessage": { "type": "string", "description": "Internal server raw explanation stack" },
+        "isDeleted": { "type": "boolean", "description": "Logical deletion safety parameter" },
+        "createdAt": { "type": "string", "description": "Creation timestamp ISO" },
+        "updatedAt": { "type": "string", "description": "Modification timestamp ISO" },
+        "sentAt": { "type": "string", "description": "Dispatch actual execution time ISO" },
+        "nextRetryAt": { "type": "string", "description": "Chronological coordinate calculating delays" }
+      },
+      "required": ["jobId", "tenantId", "outletId", "type", "customerName", "customerPhone", "message", "deliveryChannel", "status", "retryCount", "maxRetries", "createdBy", "createdByName", "triggeredBy", "isDeleted", "createdAt", "updatedAt"]
+    },
+    "notificationLog": {
+      "title": "Notification Log Entry V2",
+      "description": "Ledger of immutable notification job run delivery attempts and payloads.",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "outletId": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "type": { "type": "string" },
+        "provider": { "type": "string" },
+        "target": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["queued", "sent", "failed"] },
+        "errorMessage": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["logId", "jobId", "tenantId", "outletId", "type", "provider", "target", "message", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -319,6 +370,14 @@
     "/tenants/{tenantId}/notifications/{notificationId}": {
       "schema": "notification",
       "description": "Ledger listing dispatch notifications, template types, outcomes, and audit lines."
+    },
+    "/tenants/{tenantId}/automationJobs/{jobId}": {
+      "schema": "automationJob",
+      "description": "Ledger of point-of-sale and backend notification dispatcher cron entries."
+    },
+    "/tenants/{tenantId}/notificationLogs/{logId}": {
+      "schema": "notificationLog",
+      "description": "Ledger of immutable notification job run delivery attempts and payloads."
     },
     "/tenants/{tenantId}/dailyReports/{reportId}": {
       "schema": "dailyReport",

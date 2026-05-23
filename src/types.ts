@@ -424,3 +424,46 @@ export interface NotificationLog {
   sentByName?: string;
 }
 
+export interface AutomationJob {
+  jobId: string;
+  tenantId: string;
+  outletId: string;
+  type: 'send_receipt' | 'ready_pickup' | 'overdue_pickup' | 'partial_payment_reminder' | 'custom_manual';
+  transactionId?: string;
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  message: string;
+  deliveryChannel: 'whatsapp';
+  status: 'queued' | 'processing' | 'sent' | 'failed' | 'cancelled';
+  retryCount: number;
+  maxRetries: number;
+  nextRetryAt?: any | null; // Firestore Timestamp, Date, or string
+  createdBy: string;
+  createdByName: string;
+  triggeredBy: 'system' | 'manual' | 'status_change' | 'payment_update' | 'checkout';
+  errorMessage?: string;
+  sentAt?: any | null; // Firestore Timestamp, Date, or string
+  createdAt: any; // Firestore Timestamp, Date, or string
+  updatedAt: any; // Firestore Timestamp, Date, or string
+  isDeleted: boolean;
+}
+
+export interface AutomationNotificationLog {
+  logId: string;
+  jobId: string;
+  tenantId: string;
+  outletId: string;
+  transactionId?: string;
+  customerId?: string;
+  type: string;
+  provider: string;
+  target: string;
+  message: string;
+  status: 'queued' | 'sent' | 'failed';
+  providerResponse?: any;
+  errorMessage?: string;
+  createdAt: any; // Firestore Timestamp or date ISO string
+}
+
+

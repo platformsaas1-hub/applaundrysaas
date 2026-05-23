@@ -16,6 +16,7 @@ import {
 import { AntreanView } from '../components/AntreanView';
 import { NotaDigital } from '../components/NotaDigital';
 import { Transaction } from '../types';
+import { triggerAutoReady, triggerAutoPartialPaymentReminder } from '../services/automation/automationEngine';
 
 export function QueuesPage() {
   const { userProfile } = useAuth();
@@ -75,9 +76,23 @@ export function QueuesPage() {
       updatePayload.pickedUpAt = new Date().toISOString();
     }
 
+    const matchedTx = transactions.find(t => t.transactionId === id);
+
     try {
       await updateDoc(txRef, updatePayload);
       console.log(`Updated transaction ${id} status successfully to: ${status}`);
+
+      if (status === 'ready' && matchedTx) {
+        const outletObj = outlets.find(o => o.outletId === matchedTx.outletId || o.outletId === activeOutletId);
+        triggerAutoReady({
+          tenantId,
+          outletId: matchedTx.outletId || activeOutletId || 'outlet_default',
+          outletName: outletObj?.name || 'LaundryKu',
+          transaction: { ...matchedTx, ...updatePayload },
+          operatorUid: userProfile?.userId || 'system',
+          operatorName: userProfile?.name || 'Kasir'
+        }).catch(err => console.error('[Queue Status Automation] Ready trigger error:', err));
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `tenants/${tenantId}/transactions/${id}`);
     }
@@ -103,6 +118,18 @@ export function QueuesPage() {
     try {
       await updateDoc(txRef, updatePayload);
       console.log(`Updated transaction ${id} payment ledger successfully.`);
+
+      if (payStatus === 'partial' && matchedTx) {
+        const outletObj = outlets.find(o => o.outletId === matchedTx.outletId || o.outletId === activeOutletId);
+        triggerAutoPartialPaymentReminder({
+          tenantId,
+          outletId: matchedTx.outletId || activeOutletId || 'outlet_default',
+          outletName: outletObj?.name || 'LaundryKu',
+          transaction: { ...matchedTx, ...updatePayload },
+          operatorUid: userProfile?.userId || 'system',
+          operatorName: userProfile?.name || 'Kasir'
+        }).catch(err => console.error('[Queue Payment Automation] Partial trigger error:', err));
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `tenants/${tenantId}/transactions/${id}`);
     }

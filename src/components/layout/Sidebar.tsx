@@ -11,7 +11,8 @@ import {
   LogOut,
   X,
   Building,
-  DollarSign
+  DollarSign,
+  Zap
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -61,6 +62,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       to: '/financials',
       label: 'Keuangan & Shift',
       icon: DollarSign,
+      allowedRoles: ['owner', 'admin', 'kasir']
+    },
+    {
+      to: '/automation',
+      label: 'Automation Center',
+      icon: Zap,
       allowedRoles: ['owner', 'admin', 'kasir']
     }
   ];
