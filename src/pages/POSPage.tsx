@@ -25,6 +25,7 @@ export function POSPage() {
   const navigate = useNavigate();
   const { userProfile, currentUser } = useAuth();
   const { services, outlets, activeOutletId } = useTenant();
+  const [activeOutletServices, setActiveOutletServices] = useState<LaundryService[]>([]);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -68,6 +69,56 @@ export function POSPage() {
 
     return unsubscribe;
   }, [tenantId, activeOutletId, currentUser?.uid]);
+
+  // Sync active services under specific active outlet in real time
+  useEffect(() => {
+    if (!tenantId || !activeOutletId) {
+      setActiveOutletServices([]);
+      return;
+    }
+
+    const servicesRef = collection(db, 'tenants', tenantId, 'services');
+    const q = query(
+      servicesRef,
+      where('active', '==', true),
+      where('isDeleted', '==', false),
+      where('outletIds', 'array-contains', activeOutletId),
+      orderBy('name')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: LaundryService[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data() as LaundryService;
+        list.push({
+          ...item,
+          isActive: item.active !== undefined ? item.active : item.isActive,
+          type: item.type || item.category || 'other',
+          pricePerUnit: item.pricePerUnit || item.price || 0,
+          estimatedDays: item.estimatedDays || Math.ceil((item.estimatedDurationHours || 24) / 24)
+        });
+      });
+      setActiveOutletServices(list);
+    }, (error) => {
+      console.warn("Failed to subscribe active services for outlet:", error);
+      // Fallback in-memory filter if query fails or index is building
+      const fallback = services.filter(s => 
+        (s.active || s.isActive) && 
+        !s.isDeleted && 
+        (s.outletIds || []).includes(activeOutletId)
+      ).map(item => ({
+        ...item,
+        isActive: item.active !== undefined ? item.active : item.isActive,
+        type: item.type || item.category || 'other',
+        pricePerUnit: item.pricePerUnit || item.price || 0,
+        estimatedDays: item.estimatedDays || Math.ceil((item.estimatedDurationHours || 24) / 24)
+      }));
+      setActiveOutletServices(fallback);
+    });
+
+    return unsubscribe;
+  }, [tenantId, activeOutletId, services]);
+
   const currentRole = userProfile?.role || 'kasir';
 
   // 1. Sync Customers CRM in real-time
@@ -320,7 +371,7 @@ export function POSPage() {
         </div>
       )}
       <POSView
-        services={services}
+        services={activeOutletServices}
         customers={customers}
         outlets={outlets}
         currentRole={currentRole}

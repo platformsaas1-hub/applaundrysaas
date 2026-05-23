@@ -64,26 +64,40 @@ service cloud.firestore {
 
     function isValidOutlet(data) {
       return data.outletId is string && data.outletId.size() <= 128
-          && data.tenantId is string && data.tenantId.size() <= 128
+          && (data.tenantId == null || (data.tenantId is string && data.tenantId.size() <= 128))
           && data.name is string && data.name.size() <= 200
           && data.address is string && data.address.size() <= 500
-          && data.phone is string && data.phone.size() <= 32
+          && (data.phone == null || data.phone is string && data.phone.size() <= 32)
+          && (data.code == null || data.code is string)
+          && (data.managerName == null || data.managerName is string)
+          && (data.printerName == null || data.printerName is string)
+          && (data.receiptFooter == null || data.receiptFooter is string)
+          && (data.isMainOutlet == null || data.isMainOutlet is bool)
+          && (data.active == null || data.active is bool)
           && (data.isActive == null || data.isActive is bool)
           && (data.isDeleted == null || data.isDeleted is bool)
-          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64))
+          && (data.updatedAt == null || data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
     function isValidService(data) {
       return data.serviceId is string && data.serviceId.size() <= 128
-          && data.tenantId is string && data.tenantId.size() <= 128
+          && (data.tenantId == null || (data.tenantId is string && data.tenantId.size() <= 128))
           && data.name is string && data.name.size() <= 200
-          && data.type in ["kiloan", "satuan", "sepatu", "karpet", "other"]
-          && data.unit in ["kg", "pcs", "pair", "m2"]
-          && (data.pricePerUnit is number || data.price is number)
-          && (data.estimatedDays is number || data.estimatedHours is number)
-          && data.isActive is bool
+          && (data.type == null || data.type in ["kiloan", "satuan", "sepatu", "karpet", "other", "vip", "express", "dry_clean"])
+          && (data.category == null || data.category in ["kiloan", "satuan", "express", "vip", "dry_clean", "other"])
+          && (data.unit == null || data.unit is string)
+          && (data.price == null || data.price is number)
+          && (data.pricePerUnit == null || data.pricePerUnit is number)
+          && (data.estimatedDays == null || data.estimatedDays is number)
+          && (data.estimatedDurationHours == null || data.estimatedDurationHours is number)
+          && (data.isExpress == null || data.isExpress is bool)
+          && (data.outletIds == null || data.outletIds is list)
+          && (data.active == null || data.active is bool)
+          && (data.isActive == null || data.isActive is bool)
           && (data.isDeleted == null || data.isDeleted is bool)
-          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64))
+          && (data.updatedAt == null || data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
     function isValidCustomer(data) {

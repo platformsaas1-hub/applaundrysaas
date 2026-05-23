@@ -57,14 +57,20 @@ export interface Outlet {
   code?: string;
   name: string;
   address: string;
-  phone: string;
-  isMainOutlet?: boolean;
+  phone?: string;
+  managerName?: string;
   printerName?: string;
   receiptFooter?: string;
-  isActive?: boolean;
-  isDeleted?: boolean;
-  createdAt: string | Timestamp | any;
+  isMainOutlet?: boolean;
+  active?: boolean;
+  createdAt?: string | Timestamp | any;
   updatedAt?: string | Timestamp | any;
+  isDeleted?: boolean;
+  deletedAt?: string | Timestamp | null | any;
+  deletedBy?: string | null;
+
+  // Backwards compatibility
+  isActive?: boolean;
 }
 
 /**
@@ -75,19 +81,26 @@ export interface LaundryService {
   serviceId: string;
   tenantId?: string;
   name: string;
-  category?: string;
-  type: 'kiloan' | 'satuan' | 'sepatu' | 'karpet' | 'other';
-  unit: 'kg' | 'pcs' | 'pair' | 'm2';
-  pricePerUnit: number; // For compatibility
-  price?: number; // Upgraded price field.
-  estimatedDays: number; // For compatibility
-  estimatedHours?: number; // Upgraded estimated SLA hours
-  queueCategory?: string;
+  category?: 'kiloan' | 'satuan' | 'express' | 'vip' | 'dry_clean' | 'other';
+  unit?: 'kg' | 'pcs' | 'item' | 'pair' | 'm2' | string;
+  price?: number;
+  estimatedDurationHours?: number;
   isExpress?: boolean;
-  isActive: boolean;
-  isDeleted?: boolean;
-  createdAt: string | Timestamp | any;
+  outletIds?: string[];
+  description?: string;
+  active?: boolean;
+  createdAt?: string | Timestamp | any;
   updatedAt?: string | Timestamp | any;
+  isDeleted?: boolean;
+  deletedAt?: string | Timestamp | null | any;
+  deletedBy?: string | null;
+
+  // Backwards compatibility fields
+  pricePerUnit: number;
+  estimatedDays: number;
+  unitPrice?: number;
+  type?: 'kiloan' | 'satuan' | 'sepatu' | 'karpet' | 'other' | string;
+  isActive?: boolean;
 }
 
 /**
