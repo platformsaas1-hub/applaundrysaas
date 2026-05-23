@@ -45,52 +45,139 @@ service cloud.firestore {
           && data.email is string && data.email.size() <= 200
           && data.role in ["owner", "admin", "kasir", "pegawai"]
           && data.tenantId is string && data.tenantId.size() <= 128
-          && data.createdAt is string && data.createdAt.size() <= 64;
+          && data.activeOutletId is string && data.activeOutletId.size() <= 128
+          && (data.isActive == null || data.isActive is bool)
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidTenant(data) {
       return data.tenantId is string && data.tenantId.size() <= 128
           && data.businessName is string && data.businessName.size() <= 200
           && data.ownerId is string && data.ownerId.size() <= 128
-          && data.status in ["active", "suspended", "expired"]
           && data.plan in ["free", "basic", "premium"]
-          && data.createdAt is string && data.createdAt.size() <= 64;
+          && (data.subscriptionStatus is string && data.subscriptionStatus.size() <= 64 || data.status is string && data.status.size() <= 64)
+          && (data.isActive == null || data.isActive is bool)
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidOutlet(data) {
       return data.outletId is string && data.outletId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
           && data.name is string && data.name.size() <= 200
           && data.address is string && data.address.size() <= 500
-          && data.createdAt is string && data.createdAt.size() <= 64;
+          && data.phone is string && data.phone.size() <= 32
+          && (data.isActive == null || data.isActive is bool)
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidService(data) {
       return data.serviceId is string && data.serviceId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
           && data.name is string && data.name.size() <= 200
           && data.type in ["kiloan", "satuan", "sepatu", "karpet", "other"]
           && data.unit in ["kg", "pcs", "pair", "m2"]
-          && data.pricePerUnit is number
-          && data.estimatedDays is number
+          && (data.pricePerUnit is number || data.price is number)
+          && (data.estimatedDays is number || data.estimatedHours is number)
           && data.isActive is bool
-          && data.createdAt is string && data.createdAt.size() <= 64;
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidCustomer(data) {
       return data.customerId is string && data.customerId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
           && data.name is string && data.name.size() <= 200
           && data.phone is string && data.phone.size() <= 32
-          && data.createdAt is string && data.createdAt.size() <= 64;
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
+    function isValidEmployee(data) {
+      return data.employeeId is string && data.employeeId.size() <= 128
+          && data.userId is string && data.userId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.role in ["owner", "admin", "kasir", "pegawai"]
+          && data.fullName is string && data.fullName.size() <= 200
+          && data.phone is string && data.phone.size() <= 32
+          && data.salaryType is string && data.salaryType.size() <= 64
+          && data.isActive is bool
+          && data.isDeleted is bool
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidTransaction(data) {
       return data.transactionId is string && data.transactionId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
           && data.outletId is string && data.outletId.size() <= 128
           && data.customerId is string && data.customerId.size() <= 128
           && data.customerName is string && data.customerName.size() <= 200
-          && data.totalAmount is number
-          && data.paymentStatus in ["unpaid", "paid", "refunded"]
-          && data.orderStatus in ["received", "processing", "ready", "delivered"]
-          && data.receivedAt is string && data.receivedAt.size() <= 64;
+          && (data.totalAmount is number || data.grandTotal is number)
+          && data.paymentStatus in ["unpaid", "partial", "paid", "refunded"]
+          && data.orderStatus in ["created", "queued", "washing", "drying", "ironing", "packing", "ready", "completed", "picked_up", "cancelled", "received", "processing", "delivered"]
+          && (data.receivedAt is timestamp || (data.receivedAt is string && data.receivedAt.size() <= 64))
+          && (data.isDeleted == null || data.isDeleted is bool);
+    }
+
+    function isValidTransactionItem(data) {
+      return data.serviceId is string && data.serviceId.size() <= 128
+          && data.serviceName is string && data.serviceName.size() <= 200
+          && data.qty is number
+          && (data.unitPrice is number || data.pricePerUnit is number)
+          && (data.subtotal is number || data.totalPrice is number);
+    }
+
+    function isValidExpense(data) {
+      return data.expenseId is string && data.expenseId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.category is string && data.category.size() <= 100
+          && data.title is string && data.title.size() <= 200
+          && data.amount is number
+          && data.createdBy is string && data.createdBy.size() <= 128
+          && (data.createdByName == null || (data.createdByName is string && data.createdByName.size() <= 200))
+          && (data.notes == null || (data.notes is string && data.notes.size() <= 1000))
+          && (data.expenseDate is string && data.expenseDate.size() <= 64 || data.expenseDate is timestamp)
+          && (data.isDeleted == null || data.isDeleted is bool)
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64))
+          && (data.updatedAt == null || data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidShiftClosing(data) {
+      return data.shiftId is string && data.shiftId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.cashierId is string && data.cashierId.size() <= 128
+          && data.cashierName is string && data.cashierName.size() <= 200
+          && (data.openedAt is string && data.openedAt.size() <= 64 || data.openedAt is timestamp)
+          && (data.closedAt == null || (data.closedAt is string && data.closedAt.size() <= 64) || data.closedAt is timestamp)
+          && data.openingCash is number
+          && data.expectedCash is number
+          && (data.actualCash == null || data.actualCash is number)
+          && (data.cashDifference == null || data.cashDifference is number)
+          && (data.totalTransactions == null || data.totalTransactions is number)
+          && (data.totalRevenue == null || data.totalRevenue is number)
+          && (data.notes == null || (data.notes is string && data.notes.size() <= 1000))
+          && data.status in ["open", "closed"]
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64))
+          && (data.updatedAt == null || data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidNotification(data) {
+      return data.notificationId is string && data.notificationId.size() <= 128
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.transactionId is string && data.transactionId.size() <= 128
+          && data.customerPhone is string && data.customerPhone.size() <= 32
+          && data.templateType is string && data.templateType.size() <= 128
+          && data.provider is string && data.provider.size() <= 64
+          && data.status in ["sent", "failed"]
+          && (data.responseMessage == null || (data.responseMessage is string && data.responseMessage.size() <= 1000))
+          && data.sentBy is string && data.sentBy.size() <= 128
+          && (data.sentByName == null || (data.sentByName is string && data.sentByName.size() <= 200))
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidDailyReport(data) {
@@ -99,9 +186,20 @@ service cloud.firestore {
           && data.outletId is string && data.outletId.size() <= 128
           && data.totalRevenue is number
           && data.totalOrders is number
-          && data.updatedAt is string && data.updatedAt.size() <= 64;
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64) || data.createdAt == null)
+          && (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
+    function isValidActivityLog(data) {
+      return data.logId is string && data.logId.size() <= 128
+          && data.userId is string && data.userId.size() <= 128
+          && data.userName is string && data.userName.size() <= 200
+          && data.action is string && data.action.size() <= 100
+          && data.entityType is string && data.entityType.size() <= 100
+          && data.entityId is string && data.entityId.size() <= 128
+          && data.description is string && data.description.size() <= 1000
+          && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
 
     // --- USER PROFILE RULES ---
     match /users/{userId} {
@@ -138,6 +236,12 @@ service cloud.firestore {
         allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidCustomer(request.resource.data);
       }
 
+      // EMPLOYEES DIRECTORY
+      match /employees/{employeeId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin"]) && isValidEmployee(request.resource.data);
+      }
+
       // TRANSACTION AND POINT-OF-SALE OPERATOR
       match /transactions/{transactionId} {
         allow read: if hasTenantReadAccess(tenantId);
@@ -147,14 +251,87 @@ service cloud.firestore {
         allow update: if (hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data)) || (
           hasTenantRole(tenantId, ["pegawai"]) &&
           isValidTransaction(request.resource.data) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'workerId'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'workerId', 'workerName', 'updatedAt'])
         );
+
+        // Subcollection Items under Transaction
+        match /items/{itemId} {
+          allow read: if hasTenantReadAccess(tenantId);
+          allow create, update, delete: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidTransactionItem(request.resource.data);
+        }
+      }
+
+      // EXPENSES
+      match /expenses/{expenseId} {
+        allow read: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
+        allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidExpense(request.resource.data);
+        allow update, delete: if hasTenantRole(tenantId, ["owner", "admin"]) && isValidExpense(request.resource.data);
+      }
+
+      // SHIFT CLOSINGS
+      match /shiftClosings/{shiftId} {
+        allow read: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
+      }
+
+      // NOTIFICATIONS LOG OUTBOX
+      match /notifications/{notificationId} {
+        allow read: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
+        allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidNotification(request.resource.data);
       }
 
       // PRE-PROCESSED DIURNAL METRIC REPORTING DB
       match /dailyReports/{reportId} {
         allow read: if hasTenantReadAccess(tenantId);
         allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidDailyReport(request.resource.data);
+      }
+
+      // ACTIVITY LOGS
+      match /activityLogs/{logId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create: if isSignedIn() && (getUserData().tenantId == tenantId) && isValidActivityLog(request.resource.data);
+      }
+
+      // QUEUES
+      match /queues/{queueId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir", "pegawai"]);
+      }
+
+      // NOTIFICATIONS
+      match /notifications/{notificationId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update, delete: if hasTenantRole(tenantId, ["owner", "admin"]);
+      }
+
+      // SETTINGS
+      match /settings/{settingId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin"]);
+      }
+
+      // SUBSCRIPTIONS
+      match /subscriptions/{subscriptionId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner"]);
+      }
+
+      // INVENTORY
+      match /inventory/{itemId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update, delete: if hasTenantRole(tenantId, ["owner", "admin", "kasir", "pegawai"]);
+      }
+
+      // VOUCHERS
+      match /vouchers/{voucherId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin"]);
+      }
+
+      // MEMBERSHIPS
+      match /memberships/{membershipId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]);
       }
     }
   }

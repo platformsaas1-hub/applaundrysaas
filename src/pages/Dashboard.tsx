@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
+import { db } from '../firebase/config';
+import { handleFirestoreError, OperationType } from '../firebase/errorModel';
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  limit 
+} from 'firebase/firestore';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
+import { formatRupiah } from '../utils/formatting';
 import { 
   Building, 
   Store, 
@@ -13,10 +24,54 @@ import {
   Sliders,
   Users
 } from 'lucide-react';
+import { Transaction } from '../types';
 
 export function Dashboard() {
   const { userProfile } = useAuth();
-  const { tenant, activeOutlet, services } = useTenant();
+  const { tenant, activeOutlet, services, activeOutletId } = useTenant();
+
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const tenantId = userProfile?.tenantId || null;
+
+  // Real-time synchronization of lightweight recent transactions for dashboard metrics
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const transactionsRef = collection(db, 'tenants', tenantId, 'transactions');
+    // Using simple single-field indexing with strict 50 records limit
+    const q = query(
+      transactionsRef, 
+      where('isDeleted', '==', false), 
+      orderBy('createdAt', 'desc'), 
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: Transaction[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as Transaction);
+      });
+      // Filter by active outlet if specified
+      const filtered = activeOutletId 
+        ? list.filter(t => t.outletId === activeOutletId)
+        : list;
+
+      setRecentTransactions(filtered);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `tenants/${tenantId}/transactions`);
+    });
+
+    return unsubscribe;
+  }, [tenantId, activeOutletId]);
+
+  // Calculations derived from loaded active set (budget friendly)
+  const totalRevenue = recentTransactions
+    .filter(t => t.paymentStatus === 'paid')
+    .reduce((acc, curr) => acc + (curr.grandTotal || curr.totalAmount || 0), 0);
+
+  const pendingQueuesCount = recentTransactions
+    .filter(t => t.orderStatus === 'received' || t.orderStatus === 'processing')
+    .length;
 
   return (
     <div className="space-y-6 font-sans text-slate-800 animate-fade-in select-none">
@@ -48,11 +103,11 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Omzet Workspace</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Omzet Workspace (Today's Batch)</span>
             <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="space-y-0.5">
-            <h4 className="text-lg font-extrabold text-slate-900 font-mono">Rp 0</h4>
+            <h4 className="text-lg font-extrabold text-slate-900 font-mono">{formatRupiah(totalRevenue)}</h4>
             <p className="text-[10px] text-slate-400">Total omzet dari transaksi tervalidasi</p>
           </div>
         </div>
@@ -63,7 +118,7 @@ export function Dashboard() {
             <Layers className="w-4 h-4 text-amber-500" />
           </div>
           <div className="space-y-0.5">
-            <h4 className="text-lg font-extrabold text-slate-900 font-mono">0 Slip</h4>
+            <h4 className="text-lg font-extrabold text-slate-900 font-mono">{pendingQueuesCount} Slip</h4>
             <p className="text-[10px] text-slate-400">Antrean cucian aktif di cabang ini</p>
           </div>
         </div>
@@ -90,7 +145,7 @@ export function Dashboard() {
               Pernyataan Foundation Setup
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-650 leading-relaxed">
                 Struktur fondasi proyek <strong>LaundryKu SaaS</strong> telah terpasang seutuhnya. Seluruh modul di bawah ini beroperasi dengan lancar, terhubung secara erat melalui Context API dan dipetakan dalam router global:
               </p>
               
@@ -127,7 +182,7 @@ export function Dashboard() {
               <div className="flex items-start gap-2 bg-blue-50/50 border border-blue-150 p-3.5 rounded-lg text-slate-600 leading-relaxed text-[11px]">
                 <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <span>
-                  Sesuai dengan instruksi <strong>Foundation Setup</strong>, modul operasional frontend (Point of Sale, Entri Transaksi, Analisis Grafik) yang dinamis belum diujikan saat ini untuk menjaga kedisiplinan cakupan fondasi dan mempermudah pelacakan build awal.
+                  Sesuai dengan instruksi <strong>Operational Core Engine</strong>, seluruh kalkulasi ditiadakan dari scan penuh tidak bermutu. Omset dan antrean dihitung dinamis dari real-time snapshot yang ter-limit dengan aman.
                 </span>
               </div>
             </CardContent>

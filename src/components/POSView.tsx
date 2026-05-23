@@ -39,10 +39,12 @@ export const POSView: React.FC<POSViewProps> = ({
   const [cart, setCart] = useState<TransactionItem[]>([]);
   const [weightInput, setWeightInput] = useState<number>(3.0); // For kiloan
   const [discount, setDiscount] = useState<number>(0);
-  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid'>('paid');
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'partial'>('paid');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qris' | 'transfer'>('cash');
   const [orderNotes, setOrderNotes] = useState<string>('');
   const [selectedOutlet, setSelectedOutlet] = useState<string>(activeOutletId || outlets[0]?.outletId || '');
+  const [paidInputAmount, setPaidInputAmount] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Filter customers by search
   const filteredCustomers = customers.filter(c => 
@@ -121,7 +123,9 @@ export const POSView: React.FC<POSViewProps> = ({
   const cartSubtotal = cart.reduce((acc, curr) => acc + curr.totalPrice, 0);
   const cartTotal = Math.max(0, cartSubtotal - discount);
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
+    if (isSubmitting) return;
+
     if (!selectedCustomerId) {
       alert('Mohon pilih pelanggan terlebih dahulu!');
       return;
@@ -131,32 +135,90 @@ export const POSView: React.FC<POSViewProps> = ({
       return;
     }
 
+    const hasInvalidQty = cart.some(item => item.qty <= 0);
+    if (hasInvalidQty) {
+      alert('Jumlah (qty) item belanja tidak boleh nol atau negatif!');
+      return;
+    }
+
+    if (cartTotal < 0 || isNaN(cartTotal)) {
+      alert('Total transaksi tidak valid!');
+      return;
+    }
+
+    // Dynamic numeric payment validation match
+    let calculatedPaidAmount = 0;
+    if (paymentStatus === 'paid') {
+      calculatedPaidAmount = paidInputAmount >= cartTotal ? cartTotal : paidInputAmount;
+      if (calculatedPaidAmount === 0 && cartTotal > 0) {
+        calculatedPaidAmount = cartTotal; // fallback default
+      }
+    } else if (paymentStatus === 'partial') {
+      calculatedPaidAmount = paidInputAmount;
+    } else {
+      calculatedPaidAmount = 0;
+    }
+
+    if (paymentStatus === 'partial' && (calculatedPaidAmount <= 0 || calculatedPaidAmount >= cartTotal)) {
+      alert(`Untuk pembayaran sebagian (DP), jumlah bayar harus di antara Rp 1 dan ${formatRupiah(cartTotal - 1)}.`);
+      return;
+    }
+
     const customer = customers.find(c => c.customerId === selectedCustomerId)!;
     
-    // Add transaction list
-    onAddTransaction({
-      outletId: selectedOutlet,
-      customerId: customer.customerId,
-      customerName: customer.name,
-      customerPhone: customer.phone,
-      items: cart,
-      totalAmount: cartTotal,
-      discountAmount: discount,
-      paymentStatus: paymentStatus,
-      paymentMethod: paymentStatus === 'paid' ? paymentMethod : 'none',
-      orderStatus: 'received',
-      weight: cart.find(i => services.find(s => s.serviceId === i.serviceId)?.type === 'kiloan')?.qty || undefined,
-      workerId: 'worker_kasir_curr',
-      workerName: 'Kasir Aktif',
-      notes: orderNotes || undefined
-    });
+    try {
+      setIsSubmitting(true);
+      
+      // Calculate change amount if paid is greater than total in full paid mode
+      const calculatedChange = paymentStatus === 'paid' && paidInputAmount > cartTotal ? paidInputAmount - cartTotal : 0;
+      const remainingBalance = Math.max(0, cartTotal - calculatedPaidAmount);
 
-    // Reset Form
-    setCart([]);
-    setDiscount(0);
-    setOrderNotes('');
-    setSelectedCustomerId('');
-    setSearchCustomerQuery('');
+      await onAddTransaction({
+        outletId: selectedOutlet,
+        customerId: customer.customerId,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        items: cart,
+        totalAmount: cartTotal,
+        grandTotal: cartTotal,
+        subtotal: cartSubtotal,
+        discountAmount: discount,
+        tax: 0,
+        paidAmount: calculatedPaidAmount,
+        remainingAmount: remainingBalance,
+        changeAmount: calculatedChange,
+        paymentStatus: paymentStatus,
+        paymentMethod: paymentStatus !== 'unpaid' ? paymentMethod : 'none',
+        orderStatus: 'received',
+        weight: cart.find(i => services.find(s => s.serviceId === i.serviceId)?.type === 'kiloan')?.qty || undefined,
+        workerId: 'worker_kasir_curr',
+        workerName: 'Kasir Aktif',
+        notes: orderNotes || undefined,
+        paymentHistory: calculatedPaidAmount > 0 ? [
+          {
+            paymentId: `pay_${Date.now()}`,
+            amount: calculatedPaidAmount,
+            method: paymentMethod,
+            receivedAt: new Date().toISOString(),
+            recordedBy: 'Kasir Aktif'
+          }
+        ] : []
+      });
+
+      // Reset Form
+      setCart([]);
+      setDiscount(0);
+      setOrderNotes('');
+      setSelectedCustomerId('');
+      setSearchCustomerQuery('');
+      setPaidInputAmount(0);
+      setPaymentStatus('paid');
+    } catch (e) {
+      console.error(e);
+      alert('Gagal membuat transaksi. Silakan coba kembali.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Role Protection check from Rules mapping
@@ -453,15 +515,18 @@ export const POSView: React.FC<POSViewProps> = ({
 
             {/* Payment Parameters togglers */}
             <div className="space-y-2 pt-2 border-t border-slate-150">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Metode Pembayaran</span>
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Pembayaran</span>
               
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1">
                 <button
                   type="button"
-                  onClick={() => setPaymentStatus('paid')}
-                  className={`py-1 text-xs font-bold rounded-md border transition-all ${
+                  onClick={() => {
+                    setPaymentStatus('paid');
+                    setPaidInputAmount(cartTotal);
+                  }}
+                  className={`py-1.5 text-[10.5px] font-bold rounded-md border transition-all ${
                     paymentStatus === 'paid'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-extrabold'
                       : 'border-slate-200 text-slate-500 hover:bg-slate-100'
                   }`}
                 >
@@ -470,34 +535,84 @@ export const POSView: React.FC<POSViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentStatus('unpaid');
+                    setPaymentStatus('partial');
+                    setPaidInputAmount(Math.round(cartTotal / 2));
                   }}
-                  className={`py-1 text-xs font-bold rounded-md border transition-all ${
-                    paymentStatus === 'unpaid'
-                      ? 'bg-amber-50 text-amber-700 border-amber-300'
+                  className={`py-1.5 text-[10.5px] font-bold rounded-md border transition-all ${
+                    paymentStatus === 'partial'
+                      ? 'bg-blue-50 text-blue-700 border-blue-300 font-extrabold'
                       : 'border-slate-200 text-slate-500 hover:bg-slate-100'
                   }`}
                 >
-                  BELUM LUNAS
+                  DP / PARTIAL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentStatus('unpaid');
+                    setPaidInputAmount(0);
+                  }}
+                  className={`py-1.5 text-[10.5px] font-bold rounded-md border transition-all ${
+                    paymentStatus === 'unpaid'
+                      ? 'bg-rose-50 text-rose-700 border-rose-300 font-extrabold'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  BELUM BAYAR
                 </button>
               </div>
 
-              {paymentStatus === 'paid' && (
-                <div className="grid grid-cols-3 gap-1 pt-1.5">
-                  {(['cash', 'qris', 'transfer'] as const).map(met => (
-                    <button
-                      key={met}
-                      type="button"
-                      onClick={() => setPaymentMethod(met)}
-                      className={`py-1 text-[10px] font-medium rounded border uppercase ${
-                        paymentMethod === met
-                          ? 'bg-blue-50 text-blue-700 border-blue-300'
-                          : 'border-slate-200 text-slate-400 hover:bg-slate-50'
-                      }`}
-                    >
-                      {met}
-                    </button>
-                  ))}
+              {paymentStatus !== 'unpaid' && (
+                <div className="space-y-1.5 pt-1">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Metode Pembayaran</span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(['cash', 'qris', 'transfer'] as const).map(met => (
+                      <button
+                        key={met}
+                        type="button"
+                        onClick={() => setPaymentMethod(met)}
+                        className={`py-1 text-[10px] font-bold rounded border uppercase ${
+                          paymentMethod === met
+                            ? 'bg-blue-50 text-blue-700 border-blue-300'
+                            : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                        }`}
+                      >
+                        {met}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cash Input / DP Input Block */}
+              {(paymentStatus === 'paid' || paymentStatus === 'partial') && (
+                <div className="space-y-2.5 bg-slate-50 p-2.5 rounded border border-slate-100 mt-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-650">
+                    <span>{paymentStatus === 'paid' ? 'Uang Diterima' : 'Nominal Bayar DP'}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="5000"
+                      value={paidInputAmount || ''}
+                      onChange={(e) => setPaidInputAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-28 text-right text-xs font-bold font-mono border border-slate-200 rounded p-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  {/* Dynamic validation details */}
+                  {paymentStatus === 'paid' && paidInputAmount > cartTotal && (
+                    <div id="change-amount-display" className="flex justify-between text-xs text-indigo-700 font-extrabold pt-1.5 border-t border-dashed border-slate-200">
+                      <span>Uang Kembalian (Change)</span>
+                      <span className="font-mono">{formatRupiah(paidInputAmount - cartTotal)}</span>
+                    </div>
+                  )}
+
+                  {paymentStatus === 'partial' && (
+                    <div id="outstanding-balance-display" className="flex justify-between text-xs text-rose-600 font-extrabold pt-1.5 border-t border-dashed border-slate-200">
+                      <span>Sisa Tagihan (Due)</span>
+                      <span className="font-mono">{formatRupiah(Math.max(0, cartTotal - paidInputAmount))}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -505,7 +620,7 @@ export const POSView: React.FC<POSViewProps> = ({
             {/* Invoicing calculations */}
             <div className="pt-3 border-t border-slate-200 space-y-1.5 font-sans">
               <div className="flex justify-between text-xs text-slate-500 font-medium">
-                <span>Subtotal</span>
+                <span>Subtotal Jasa</span>
                 <span>{formatRupiah(cartSubtotal)}</span>
               </div>
               {discount > 0 && (
@@ -515,7 +630,7 @@ export const POSView: React.FC<POSViewProps> = ({
                 </div>
               )}
               <div className="flex justify-between text-base text-slate-800 font-extrabold pt-1">
-                <span>Total Tagihan</span>
+                <span>Grand Total</span>
                 <span className="text-xl text-blue-600 font-mono">{formatRupiah(cartTotal)}</span>
               </div>
             </div>
@@ -523,9 +638,10 @@ export const POSView: React.FC<POSViewProps> = ({
             {/* Final checkout button */}
             <button
               onClick={handleCreateOrder}
-              className="w-full mt-3 py-3 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700 active:translate-y-[0.5px] transition-all"
+              disabled={isSubmitting}
+              className="w-full mt-3 py-3 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700 disabled:opacity-55 active:translate-y-[0.5px] transition-all"
             >
-              Buat Transaksi & Kirim Nota
+              {isSubmitting ? 'Memproses checkout...' : 'Buat Transaksi & Kirim Nota'}
             </button>
           </div>
         )}
@@ -604,6 +720,19 @@ export const POSView: React.FC<POSViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isSubmitting && (
+        <div id="loading-overlay-pos" className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center z-[9999] text-white gap-2 font-sans animate-fade-in">
+          <div className="bg-slate-950 p-6 rounded-2xl shadow-xl flex flex-col items-center justify-center border border-slate-800 text-center max-w-xs">
+            <svg className="animate-spin h-8 w-8 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-sm font-bold tracking-wide text-white font-sans">Memproses Transaksi...</span>
+            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed font-sans">Menyimpan invoice kasir POS & mencatat antrean ke database.</p>
           </div>
         </div>
       )}

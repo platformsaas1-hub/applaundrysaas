@@ -6,14 +6,20 @@
       "type": "object",
       "properties": {
         "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "tenantId": { "type": "string", "description": "Reference to the owner tenant" },
+        "role": { "type": "string", "enum": ["owner", "admin", "kasir", "pegawai"], "description": "Access control role" },
         "name": { "type": "string", "description": "Full name of the user" },
         "email": { "type": "string", "description": "Email address" },
-        "role": { "type": "string", "enum": ["owner", "admin", "kasir", "pegawai"], "description": "Access control role" },
-        "tenantId": { "type": "string", "description": "Reference to the owner tenant" },
+        "phone": { "type": "string", "description": "Contact phone" },
+        "photoURL": { "type": "string", "description": "Avatar URL" },
         "activeOutletId": { "type": "string", "description": "Outlet where the user is currently working" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Account registration timestamp" }
+        "isActive": { "type": "boolean", "description": "Active state of employment" },
+        "isDeleted": { "type": "boolean", "description": "Logical deletion marker" },
+        "createdAt": { "type": "string", "description": "Account registration timestamp object" },
+        "updatedAt": { "type": "string", "description": "Timestamp of modification" },
+        "lastLoginAt": { "type": "string", "description": "Timestamp of last session start" }
       },
-      "required": ["userId", "name", "email", "role", "tenantId", "createdAt"]
+      "required": ["userId", "tenantId", "role", "name", "email", "activeOutletId", "isActive", "isDeleted", "createdAt"]
     },
     "tenant": {
       "title": "Tenant",
@@ -22,13 +28,20 @@
       "properties": {
         "tenantId": { "type": "string", "description": "Unique tenant ID (often matches Owner ID)" },
         "businessName": { "type": "string", "description": "Name of the Laundry enterprise" },
+        "businessType": { "type": "string", "description": "Classification of laundry workspace" },
         "ownerId": { "type": "string", "description": "UID of the owner user" },
-        "status": { "type": "string", "enum": ["active", "suspended", "expired"], "description": "Account subscription status" },
         "plan": { "type": "string", "enum": ["free", "basic", "premium"], "description": "Subscription tier" },
-        "planExpiresAt": { "type": "string", "format": "date-time", "description": "Expiration timestamp for theoretical paid plans" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Organization registration timestamp" }
+        "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "expired"], "description": "Status of billing pipeline" },
+        "maxOutlets": { "type": "number", "description": "Max permitted branches" },
+        "maxEmployees": { "type": "number", "description": "Max staff limit" },
+        "timezone": { "type": "string", "description": "Branch zone config" },
+        "currency": { "type": "string", "description": "Localization money format code" },
+        "isActive": { "type": "boolean", "description": "Workspace active validation" },
+        "isDeleted": { "type": "boolean", "description": "Deletion flag" },
+        "createdAt": { "type": "string", "description": "Organization setup timestamp" },
+        "updatedAt": { "type": "string", "description": "Last modified timestamp" }
       },
-      "required": ["tenantId", "businessName", "ownerId", "status", "plan", "createdAt"]
+      "required": ["tenantId", "businessName", "ownerId", "plan", "subscriptionStatus", "isActive", "isDeleted", "createdAt"]
     },
     "outlet": {
       "title": "Outlet",
@@ -36,12 +49,20 @@
       "type": "object",
       "properties": {
         "outletId": { "type": "string", "description": "Unique multi-outlet reference" },
-        "name": { "type": "string", "description": "Outlet name (e.g., LaundryKu Cabang Margonda)" },
-        "address": { "type": "string", "description": "Physical address" },
-        "phone": { "type": "string", "description": "Outlet contact number" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Outlet setup timestamp" }
+        "tenantId": { "type": "string", "description": "Associated business reference" },
+        "code": { "type": "string", "description": "Compact outlet ID identifier code" },
+        "name": { "type": "string", "description": "Outlet name" },
+        "address": { "type": "string", "description": "Physical location address" },
+        "phone": { "type": "string", "description": "Branch contact phone" },
+        "isMainOutlet": { "type": "boolean", "description": "Flag identifying headquarters" },
+        "printerName": { "type": "string", "description": "Thermal Bluetooth printer identifier" },
+        "receiptFooter": { "type": "string", "description": "Receipt trailer message note" },
+        "isActive": { "type": "boolean", "description": "Operational flag status" },
+        "isDeleted": { "type": "boolean", "description": "Soft deletion check" },
+        "createdAt": { "type": "string", "description": "Outlet registration date" },
+        "updatedAt": { "type": "string", "description": "Date update occurred" }
       },
-      "required": ["outletId", "name", "address", "createdAt"]
+      "required": ["outletId", "tenantId", "name", "address", "phone", "isActive", "isDeleted", "createdAt"]
     },
     "service": {
       "title": "Service",
@@ -49,15 +70,21 @@
       "type": "object",
       "properties": {
         "serviceId": { "type": "string", "description": "Unique service ID" },
-        "name": { "type": "string", "description": "Service name (e.g., Cuci+Setrika Reguler)" },
-        "type": { "type": "string", "enum": ["kiloan", "satuan", "sepatu", "karpet", "other"], "description": "Service classification" },
+        "tenantId": { "type": "string", "description": "Business reference ID owner" },
+        "name": { "type": "string", "description": "Service name" },
+        "category": { "type": "string", "description": "Grouping identifier" },
+        "type": { "type": "string", "enum": ["kiloan", "satuan", "sepatu", "karpet", "other"], "description": "Format metrics" },
         "unit": { "type": "string", "enum": ["kg", "pcs", "pair", "m2"], "description": "Pricing metric unit" },
-        "pricePerUnit": { "type": "number", "description": "Cost per single unit" },
-        "estimatedDays": { "type": "number", "description": "Processing SLA in days" },
-        "isActive": { "type": "boolean", "description": "Availability toggle" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+        "price": { "type": "number", "description": "Operational tariff cost" },
+        "estimatedHours": { "type": "number", "description": "SLA standard metrics" },
+        "queueCategory": { "type": "string", "description": "Conveyor queue sorting bucket" },
+        "isExpress": { "type": "boolean", "description": "Express delivery toggle" },
+        "isActive": { "type": "boolean", "description": "Availability toggler" },
+        "isDeleted": { "type": "boolean", "description": "Logical removal indicator" },
+        "createdAt": { "type": "string", "description": "Setup timestamp" },
+        "updatedAt": { "type": "string", "description": "Last updated" }
       },
-      "required": ["serviceId", "name", "type", "unit", "pricePerUnit", "estimatedDays", "isActive", "createdAt"]
+      "required": ["serviceId", "tenantId", "name", "type", "unit", "price", "isActive", "isDeleted", "createdAt"]
     },
     "customer": {
       "title": "Customer",
@@ -65,56 +92,195 @@
       "type": "object",
       "properties": {
         "customerId": { "type": "string", "description": "Unique customer reference" },
+        "tenantId": { "type": "string", "description": "Isolated workspace owner reference" },
         "name": { "type": "string", "description": "Customer full name" },
-        "phone": { "type": "string", "description": "WhatsApp compatible phone number" },
-        "address": { "type": "string", "description": "Optional home address" },
-        "notes": { "type": "string", "description": "Special preferences (e.g., allergic to specific perfume)" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Customer registration timestamp" }
+        "phone": { "type": "string", "description": "Mobile phone" },
+        "address": { "type": "string", "description": "Home delivery address" },
+        "notes": { "type": "string", "description": "Optional details" },
+        "totalOrders": { "type": "number", "description": "Accumulated orders count" },
+        "totalSpent": { "type": "number", "description": "Total billing currency accumulated" },
+        "memberLevel": { "type": "string", "description": "Classification status tiered" },
+        "points": { "type": "number", "description": "Loyalty points wallet" },
+        "lastOrderAt": { "type": "string", "description": "Late transaction date" },
+        "isDeleted": { "type": "boolean", "description": "Deletion logic" },
+        "createdAt": { "type": "string", "description": "Registration index setup" },
+        "updatedAt": { "type": "string", "description": "Edit snapshot" }
       },
-      "required": ["customerId", "name", "phone", "createdAt"]
+      "required": ["customerId", "tenantId", "name", "phone", "isDeleted", "createdAt"]
+    },
+    "employee": {
+      "title": "Employee",
+      "description": "Internal working representative credentials.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "Primary identity" },
+        "userId": { "type": "string", "description": "Referenced credential maps profile" },
+        "tenantId": { "type": "string", "description": "Linked business owner" },
+        "outletId": { "type": "string", "description": "Location assignment target" },
+        "role": { "type": "string", "description": "Employment level clearance" },
+        "fullName": { "type": "string", "description": "Full legal name" },
+        "phone": { "type": "string", "description": "Contact info" },
+        "salaryType": { "type": "string", "description": "Finance structure mapping" },
+        "joinDate": { "type": "string", "description": "Day of joining business" },
+        "isActive": { "type": "boolean", "description": "Active operational indicator" },
+        "isDeleted": { "type": "boolean", "description": "Logical delete state" },
+        "createdAt": { "type": "string", "description": "Setup log" },
+        "updatedAt": { "type": "string", "description": "Metadata edit timestamp" }
+      },
+      "required": ["employeeId", "userId", "tenantId", "outletId", "role", "fullName", "phone", "isActive", "isDeleted", "createdAt"]
     },
     "transaction": {
       "title": "Transaction",
-      "description": "Laundry order transactions and POS data.",
+      "description": "Operational master ledger of invoice elements omitting direct heavy arrays.",
       "type": "object",
       "properties": {
-        "transactionId": { "type": "string", "description": "Invoice/Order number (e.g., LKU-2026-0001)" },
-        "outletId": { "type": "string", "description": "Origin outlet ID" },
-        "customerId": { "type": "string", "description": "Associated customer ID" },
-        "customerName": { "type": "string", "description": "Cached name to prevent expensive N-reads" },
-        "customerPhone": { "type": "string", "description": "Cached phone to prevent expensive N-reads" },
-        "items": { "type": "array", "description": "Details of services ordered" },
-        "totalAmount": { "type": "number", "description": "Final price after discounts" },
-        "discountAmount": { "type": "number", "description": "Applied concession" },
-        "paymentStatus": { "type": "string", "enum": ["unpaid", "paid", "refunded"], "description": "Invoicing stage" },
-        "paymentMethod": { "type": "string", "enum": ["cash", "qris", "transfer", "none"], "description": "Applied payment instrument" },
-        "orderStatus": { "type": "string", "enum": ["received", "processing", "ready", "delivered"], "description": "Processing milestone status" },
-        "weight": { "type": "number", "description": "Total weight in kg if kiloan" },
-        "workerId": { "type": "string", "description": "Employee current processor UID" },
-        "notes": { "type": "string", "description": "Order specific specifications" },
-        "receivedAt": { "type": "string", "format": "date-time", "description": "Order placement timestamp" },
-        "completedAt": { "type": "string", "format": "date-time", "description": "Ready confirmation timestamp" },
-        "deliveredAt": { "type": "string", "format": "date-time", "description": "Handed back to customer timestamp" }
+        "transactionId": { "type": "string", "description": "Unique order ID" },
+        "tenantId": { "type": "string", "description": "Tenant owner relation index code" },
+        "outletId": { "type": "string", "description": "Active checkout outlet branch" },
+        "invoiceNumber": { "type": "string", "description": "Branded formal customer invoice number" },
+        "queueNumber": { "type": "string", "description": "Daily index order index" },
+        "customerId": { "type": "string", "description": "Referenced CRM customer profile record" },
+        "customerName": { "type": "string", "description": "Cached database field" },
+        "customerPhone": { "type": "string", "description": "Cached validation field" },
+        "cashierId": { "type": "string", "description": "Checkout processing logging user ID" },
+        "cashierName": { "type": "string", "description": "Name profile check out tracker logger" },
+        "totalItems": { "type": "number", "description": "Item items sum index" },
+        "totalQty": { "type": "number", "description": "Volume metrics total quantity sum" },
+        "subtotal": { "type": "number", "description": "Sum listing items overall rates" },
+        "discount": { "type": "number", "description": "Operational deduction amount" },
+        "tax": { "type": "number", "description": "Percent or fixed tax surcharge fees" },
+        "grandTotal": { "type": "number", "description": "Billing invoice amount due" },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "partial", "paid", "refunded"], "description": "Invoiced stage status" },
+        "orderStatus": { "type": "string", "enum": ["created", "queued", "washing", "drying", "ironing", "packing", "ready", "completed", "picked_up", "cancelled"], "description": "Operational pipeline index tracking laundry milestones" },
+        "paymentMethod": { "type": "string", "description": "Instrument mapping option" },
+        "receivedAt": { "type": "string", "description": "Initial order placement date" },
+        "estimatedDoneAt": { "type": "string", "description": "Agreed SLA target timestamp" },
+        "completedAt": { "type": "string", "description": "Active setup complete log date" },
+        "pickedUpAt": { "type": "string", "description": "Hand back CRM transaction timestamp" },
+        "notes": { "type": "string", "description": "Checkout user notes" },
+        "source": { "type": "string", "description": "POS platform descriptor" },
+        "isDeleted": { "type": "boolean", "description": "Logical deletion identifier" },
+        "createdAt": { "type": "string", "description": "System setup datetime log" },
+        "updatedAt": { "type": "string", "description": "Last edit timestamp" }
       },
-      "required": ["transactionId", "outletId", "customerId", "customerName", "items", "totalAmount", "paymentStatus", "orderStatus", "receivedAt"]
+      "required": ["transactionId", "tenantId", "outletId", "customerId", "customerName", "paymentStatus", "orderStatus", "paymentMethod", "receivedAt", "isDeleted", "createdAt"]
+    },
+    "transactionItem": {
+      "title": "Transaction Item",
+      "description": "Details of individual laundry services within an order subcollection.",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string", "description": "Primary unique key reference" },
+        "serviceId": { "type": "string", "description": "Standard catalog item relation mapping key" },
+        "serviceName": { "type": "string", "description": "Name profile cached validation" },
+        "qty": { "type": "number", "description": "Quantity quantity parsed" },
+        "unitPrice": { "type": "number", "description": "Cost per unit metrics" },
+        "subtotal": { "type": "number", "description": "Extended calculated fee index sum" },
+        "notes": { "type": "string", "description": "Processor guidance guidelines" },
+        "itemStatus": { "type": "string", "description": "Item workflow stage tracking metrics" },
+        "createdAt": { "type": "string", "description": "System datetime stamp of setup" }
+      },
+      "required": ["itemId", "serviceId", "serviceName", "qty", "unitPrice", "subtotal", "createdAt"]
+    },
+    "expense": {
+      "title": "Expense",
+      "description": "Operational overhead cost database tracked per branch.",
+      "type": "object",
+      "properties": {
+        "expenseId": { "type": "string", "description": "Unique expense identifier log entry ID" },
+        "tenantId": { "type": "string", "description": "Reference to parent tenant space" },
+        "outletId": { "type": "string", "description": "Branch assignment key location mapper" },
+        "category": { "type": "string", "description": "Type of expense class" },
+        "title": { "type": "string", "description": "Compact title" },
+        "notes": { "type": "string", "description": "Extended detail note" },
+        "amount": { "type": "number", "description": "Currency value" },
+        "expenseDate": { "type": "string", "description": "Date expenditure occurred" },
+        "createdBy": { "type": "string", "description": "Operator user ID" },
+        "createdByName": { "type": "string", "description": "Operator user name" },
+        "createdAt": { "type": "string", "description": "Log log timestamp" },
+        "updatedAt": { "type": "string", "description": "Modification timestamp" },
+        "isDeleted": { "type": "boolean", "description": "Soft deletion check" }
+      },
+      "required": ["expenseId", "tenantId", "outletId", "category", "title", "amount", "expenseDate", "createdBy", "createdAt"]
+    },
+    "shiftClosing": {
+      "title": "ShiftClosing",
+      "description": "Track shift state and cashier cash ledger totals dynamically.",
+      "type": "object",
+      "properties": {
+        "shiftId": { "type": "string", "description": "Unique shift record identifier" },
+        "tenantId": { "type": "string", "description": "Parent organizational tenant reference ID" },
+        "outletId": { "type": "string", "description": "SaaS branch assignment ID location" },
+        "cashierId": { "type": "string", "description": "The cashier UID operator who ran the shift" },
+        "cashierName": { "type": "string", "description": "Name profile label of working operator" },
+        "openedAt": { "type": "string", "description": "Clock start timestamp of shift" },
+        "closedAt": { "type": "string", "description": "Clock end timestamp of shift" },
+        "openingCash": { "type": "number", "description": "Starting base cash float amount" },
+        "expectedCash": { "type": "number", "description": "Sum of base cash plus logged transactions cash amount" },
+        "actualCash": { "type": "number", "description": "Cash counting input total recorded" },
+        "cashDifference": { "type": "number", "description": "Surplus or deficit comparison" },
+        "totalTransactions": { "type": "number", "description": "Total quantity checkout transactions during shift" },
+        "totalRevenue": { "type": "number", "description": "Total financial turnover during active shift" },
+        "notes": { "type": "string", "description": "End-of-shift notes" },
+        "status": { "type": "string", "enum": ["open", "closed"], "description": "Current status" },
+        "createdAt": { "type": "string", "description": "Timestamp shift document setup" },
+        "updatedAt": { "type": "string", "description": "Timestamp shift closure or edit" }
+      },
+      "required": ["shiftId", "tenantId", "outletId", "cashierId", "cashierName", "openedAt", "openingCash", "expectedCash", "status", "createdAt"]
     },
     "dailyReport": {
       "title": "Daily Report",
-      "description": "Pre-aggregated daily transactional summary per outlet to optimize reads and fit free tiers.",
+      "description": "Pre-aggregated statistics summaries mapping metrics per date.",
       "type": "object",
       "properties": {
-        "reportId": { "type": "string", "description": "Formatted Date ID (e.g., YYYY-MM-DD_outletId)" },
-        "date": { "type": "string", "description": "Formatted Date YYYY-MM-DD" },
-        "outletId": { "type": "string", "description": "Associated outlet reference" },
-        "totalRevenue": { "type": "number", "description": "Sum of total closed billing collections" },
-        "cashRevenue": { "type": "number", "description": "Revenue via Cash" },
-        "qrisRevenue": { "type": "number", "description": "Revenue via QRIS" },
-        "transferRevenue": { "type": "number", "description": "Revenue via Transfer" },
-        "totalOrders": { "type": "number", "description": "Volume of orders logged" },
-        "completedOrders": { "type": "number", "description": "Volume of orders delivered" },
-        "updatedAt": { "type": "string", "format": "date-time", "description": "Aggregation update timestamp" }
+        "reportId": { "type": "string", "description": "Date string composite ID" },
+        "date": { "type": "string", "description": "Date format string YYYY-MM-DD" },
+        "outletId": { "type": "string", "description": "Branch identifier" },
+        "totalRevenue": { "type": "number", "description": "Total closed earnings" },
+        "totalExpense": { "type": "number", "description": "Overhead total sum" },
+        "netProfit": { "type": "number", "description": "Profits calculation" },
+        "totalOrders": { "type": "number", "description": "Quantity processed orders" },
+        "unpaidOrders": { "type": "number", "description": "Volume awaiting payment" },
+        "paidOrders": { "type": "number", "description": "Volume paid and closed" },
+        "createdAt": { "type": "string", "description": "Created date log" },
+        "updatedAt": { "type": "string", "description": "Update aggregations log" }
       },
-      "required": ["reportId", "date", "outletId", "totalRevenue", "totalOrders", "updatedAt"]
+      "required": ["reportId", "date", "outletId", "totalRevenue", "totalExpense", "netProfit", "totalOrders", "unpaidOrders", "paidOrders", "createdAt", "updatedAt"]
+    },
+    "activityLog": {
+      "title": "Activity Log",
+      "description": "Immutable telemetry tracking actions across workspace resources.",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string", "description": "System event ID tracker" },
+        "userId": { "type": "string", "description": "Initiator profile reference" },
+        "userName": { "type": "string", "description": "Initiator legal name review cached" },
+        "action": { "type": "string", "description": "Standard action event key identifier" },
+        "entityType": { "type": "string", "description": "Affected target classification catalog" },
+        "entityId": { "type": "string", "description": "Affected entity identifier target SKU" },
+        "description": { "type": "string", "description": "Details description summary" },
+        "createdAt": { "type": "string", "description": "Timestamp setup log" }
+      },
+      "required": ["logId", "userId", "userName", "action", "entityType", "entityId", "description", "createdAt"]
+    },
+    "notification": {
+      "title": "Notification Log",
+      "description": "Log entry recording outbox WhatsApp delivery efforts for auditability.",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "description": "Unique log identifier" },
+        "tenantId": { "type": "string", "description": "SaaS space reference key" },
+        "transactionId": { "type": "string", "description": "Triggering POS transaction invoice context" },
+        "customerPhone": { "type": "string", "description": "WhatsApp destination mobile number" },
+        "templateType": { "type": "string", "description": "Template slug identifier" },
+        "provider": { "type": "string", "description": "Selected gateway operator slug" },
+        "status": { "type": "string", "enum": ["sent", "failed"], "description": "Outcome of gateway sending" },
+        "responseMessage": { "type": "string", "description": "Remote response log description message" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "sentBy": { "type": "string", "description": "Staff operator UID who triggered" },
+        "sentByName": { "type": "string", "description": "Staff operator name profile label" }
+      },
+      "required": ["notificationId", "tenantId", "transactionId", "customerPhone", "templateType", "provider", "status", "createdAt", "sentBy"]
     }
   },
   "firestore": {
@@ -138,13 +304,37 @@
       "schema": "customer",
       "description": "Directory of registered frequent flyers, loyalists, and single customers."
     },
-    "/tenants/{tenantId}/transactions/{transactionId}": {
-      "schema": "transaction",
-      "description": "Primary register containing operational and billing details of point-of-sale activities."
+    "/tenants/{tenantId}/employees/{employeeId}": {
+      "schema": "employee",
+      "description": "Directory tracking registered operators, staff, and payroll schemes."
+    },
+    "/tenants/{tenantId}/expenses/{expenseId}": {
+      "schema": "expense",
+      "description": "Workspace operational overhead cost tracking ledger entries branch-isolated."
+    },
+    "/tenants/{tenantId}/shiftClosings/{shiftId}": {
+      "schema": "shiftClosing",
+      "description": "Ledger recording cashier cash float, expectations, actual deposits, and closing times."
+    },
+    "/tenants/{tenantId}/notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "Ledger listing dispatch notifications, template types, outcomes, and audit lines."
     },
     "/tenants/{tenantId}/dailyReports/{reportId}": {
       "schema": "dailyReport",
       "description": "Pre-compiled summary metrics keeping dashboard read cost to a lightweight single read per node."
+    },
+    "/tenants/{tenantId}/activityLogs/{logId}": {
+      "schema": "activityLog",
+      "description": "Telemetry feed recording crucial adjustments, edits or settings revisions across SaaS units."
+    },
+    "/tenants/{tenantId}/transactions/{transactionId}": {
+      "schema": "transaction",
+      "description": "Primary register containing operational and billing details of point-of-sale activities."
+    },
+    "/tenants/{tenantId}/transactions/{transactionId}/items/{itemId}": {
+      "schema": "transactionItem",
+      "description": "Item details breakdown sub-ledger separating transaction order list entries to scale footprint."
     }
   }
 }

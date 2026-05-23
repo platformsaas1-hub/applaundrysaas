@@ -15,6 +15,7 @@ import { QueuesPage } from './pages/QueuesPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
+import { FinancialsPage } from './pages/FinancialsPage';
 
 export default function App() {
   return (
@@ -82,6 +83,16 @@ export default function App() {
 
                 {/* 6. Unauthorized access warning banner layout */}
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                
+                {/* 7. Financial cockpit (Expenses + Cashflow + Shifts) */}
+                <Route 
+                  path="/financials" 
+                  element={
+                    <RoleGuard allowedRoles={['owner', 'admin', 'kasir']}>
+                      <FinancialsPage />
+                    </RoleGuard>
+                  } 
+                />
                 
                 {/* Dynamic Fallback within Dashboard frame */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

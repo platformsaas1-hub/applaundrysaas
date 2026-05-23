@@ -10,7 +10,8 @@ import {
   Sliders, 
   LogOut,
   X,
-  Building
+  Building,
+  DollarSign
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +56,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       label: 'Tarif & Cabang',
       icon: Sliders,
       allowedRoles: ['owner', 'admin']
+    },
+    {
+      to: '/financials',
+      label: 'Keuangan & Shift',
+      icon: DollarSign,
+      allowedRoles: ['owner', 'admin', 'kasir']
     }
   ];
 
