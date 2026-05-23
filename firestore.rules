@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. SAFETY NET GATES - Catch all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY GATES & HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Fetch user profile data statically (before current action)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Fetch user profile data dynamically after current transaction completes (crucial for multi-entity registration)
+    function getUserDataAfter() {
+      return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Check read access (for queries/reads, user doc already exists)
+    function hasTenantReadAccess(tenantId) {
+      return isSignedIn() && getUserData().tenantId == tenantId;
+    }
+
+    // Check write/update/create access (supports registration batch by checking getAfter)
+    function hasTenantRole(tenantId, allowedRoles) {
+      return isSignedIn() &&
+             getUserDataAfter().tenantId == tenantId &&
+             getUserDataAfter().role in allowedRoles;
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.email is string && data.email.size() <= 200
+          && data.role in ["owner", "admin", "kasir", "pegawai"]
+          && data.tenantId is string && data.tenantId.size() <= 128
+          && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidTenant(data) {
+      return data.tenantId is string && data.tenantId.size() <= 128
+          && data.businessName is string && data.businessName.size() <= 200
+          && data.ownerId is string && data.ownerId.size() <= 128
+          && data.status in ["active", "suspended", "expired"]
+          && data.plan in ["free", "basic", "premium"]
+          && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidOutlet(data) {
+      return data.outletId is string && data.outletId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.address is string && data.address.size() <= 500
+          && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidService(data) {
+      return data.serviceId is string && data.serviceId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.type in ["kiloan", "satuan", "sepatu", "karpet", "other"]
+          && data.unit in ["kg", "pcs", "pair", "m2"]
+          && data.pricePerUnit is number
+          && data.estimatedDays is number
+          && data.isActive is bool
+          && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidCustomer(data) {
+      return data.customerId is string && data.customerId.size() <= 128
+          && data.name is string && data.name.size() <= 200
+          && data.phone is string && data.phone.size() <= 32
+          && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidTransaction(data) {
+      return data.transactionId is string && data.transactionId.size() <= 128
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.customerId is string && data.customerId.size() <= 128
+          && data.customerName is string && data.customerName.size() <= 200
+          && data.totalAmount is number
+          && data.paymentStatus in ["unpaid", "paid", "refunded"]
+          && data.orderStatus in ["received", "processing", "ready", "delivered"]
+          && data.receivedAt is string && data.receivedAt.size() <= 64;
+    }
+
+    function isValidDailyReport(data) {
+      return data.reportId is string && data.reportId.size() <= 128
+          && data.date is string && data.date.size() <= 32
+          && data.outletId is string && data.outletId.size() <= 128
+          && data.totalRevenue is number
+          && data.totalOrders is number
+          && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+
+    // --- USER PROFILE RULES ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || getUserData().role == "owner");
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow update: if isSignedIn() && request.auth.uid == userId 
+                    && isValidUser(request.resource.data)
+                    && !request.resource.data.keys().hasAny(['role', 'tenantId']);
+    }
+
+    // --- TENANT RECORD & NESTED DATA RULES ---
+    match /tenants/{tenantId} {
+      allow read: if isSignedIn() && (getUserData().tenantId == tenantId);
+      
+      // Let standard users bootstrap their own tenant if they are the owner
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && isValidTenant(request.resource.data);
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && isValidTenant(request.resource.data);
+
+      // OUTLETS CONFIGURATION
+      match /outlets/{outletId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner"]) && isValidOutlet(request.resource.data);
+      }
+
+      // SERVICES & CATALOG CONFIGURATION
+      match /services/{serviceId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin"]) && isValidService(request.resource.data);
+      }
+
+      // CUSTOMER DIRECTORY
+      match /customers/{customerId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidCustomer(request.resource.data);
+      }
+
+      // TRANSACTION AND POINT-OF-SALE OPERATOR
+      match /transactions/{transactionId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data);
+        
+        // Kasir, admin, owner can update all transaction fields; pegawai can only update orderStatus & workerId
+        allow update: if (hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data)) || (
+          hasTenantRole(tenantId, ["pegawai"]) &&
+          isValidTransaction(request.resource.data) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'workerId'])
+        );
+      }
+
+      // PRE-PROCESSED DIURNAL METRIC REPORTING DB
+      match /dailyReports/{reportId} {
+        allow read: if hasTenantReadAccess(tenantId);
+        allow create, update: if hasTenantRole(tenantId, ["owner", "admin", "kasir"]) && isValidDailyReport(request.resource.data);
+      }
+    }
+  }
+}

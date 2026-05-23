@@ -1,0 +1,6 @@
+{
+  "name": "LaundryKu SaaS Blueprint",
+  "description": "Blueprint arsitektur, skema Firestore database hemat kuota, dan sistem keamanan multi-tenant untuk platform Laundry SaaS modern UMKM.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
