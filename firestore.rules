@@ -31,6 +31,17 @@ service cloud.firestore {
       return isSignedIn() && getUserData().tenantId == tenantId;
     }
 
+    function hasTenantAccess(tenantId) {
+      return isSignedIn() && getUserData().tenantId == tenantId;
+    }
+
+    function hasOutletAccess(outletId) {
+      return isSignedIn() && (
+        getUserData().role in ['owner', 'admin'] ||
+        (outletId != null && getUserData().assignedOutletIds != null && outletId in getUserData().assignedOutletIds)
+      );
+    }
+
     // Check write/update/create access (supports registration batch by checking getAfter)
     function hasTenantRole(tenantId, allowedRoles) {
       return isSignedIn() &&
@@ -325,42 +336,44 @@ service cloud.firestore {
 
       // TRANSACTION AND POINT-OF-SALE OPERATOR
       match /transactions/{transactionId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
-        allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data);
+        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data);
         
         // Kasir, admin, owner can update transaction fields; pegawai can only update status/worker details
-        allow update: if (
-          hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) &&
-          hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) &&
-          isValidTransaction(request.resource.data)
-        ) || (
-          hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["pegawai"]) &&
-          hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["pegawai"]) &&
-          isValidTransaction(request.resource.data) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'workerId', 'workerName', 'updatedAt'])
+        allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && (
+          (
+            hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) &&
+            hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) &&
+            isValidTransaction(request.resource.data)
+          ) || (
+            hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["pegawai"]) &&
+            hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["pegawai"]) &&
+            isValidTransaction(request.resource.data) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'workerId', 'workerName', 'updatedAt'])
+          )
         );
 
         // Subcollection Items under Transaction
         match /items/{itemId} {
-          allow read: if hasTenantOutletAccess(tenantId, get(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId);
-          allow create, update: if hasTenantOutletWriteAccess(tenantId, getAfter(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId, ["owner", "admin", "kasir"]) && isValidTransactionItem(request.resource.data);
-          allow delete: if hasTenantOutletWriteAccess(tenantId, get(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId, ["owner", "admin", "kasir"]);
+          allow read: if request.auth != null && hasTenantAccess(tenantId) && hasOutletAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId);
+          allow create, update: if request.auth != null && hasTenantAccess(tenantId) && hasOutletAccess(getAfter(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId) && hasTenantOutletWriteAccess(tenantId, getAfter(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId, ["owner", "admin", "kasir"]) && isValidTransactionItem(request.resource.data);
+          allow delete: if request.auth != null && hasTenantAccess(tenantId) && hasOutletAccess(get(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId) && hasTenantOutletWriteAccess(tenantId, get(/databases/$(database)/documents/tenants/$(tenantId)/transactions/$(transactionId)).data.outletId, ["owner", "admin", "kasir"]);
         }
       }
 
       // EXPENSES
       match /expenses/{expenseId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
-        allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidExpense(request.resource.data);
-        allow update: if hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin"]) && isValidExpense(request.resource.data);
-        allow delete: if hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]);
+        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidExpense(request.resource.data);
+        allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin"]) && isValidExpense(request.resource.data);
+        allow delete: if request.auth != null && hasTenantAccess(resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]);
       }
 
       // SHIFT CLOSINGS
       match /shiftClosings/{shiftId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
-        allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
-        allow update: if hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
+        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
+        allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
       }
 
       // NOTIFICATIONS LOG OUTBOX
@@ -371,22 +384,24 @@ service cloud.firestore {
 
       // AUTOMATION JOBS QUEUE
       match /automationJobs/{jobId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
-        allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidAutomationJob(request.resource.data);
-        allow update: if (hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin"]) && isValidAutomationJob(request.resource.data)) ||
-                        (hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["kasir"]) && isValidAutomationJob(request.resource.data) &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'retryCount', 'nextRetryAt', 'errorMessage', 'updatedAt', 'sentAt']));
+        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidAutomationJob(request.resource.data);
+        allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && (
+          (hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin"]) && isValidAutomationJob(request.resource.data)) ||
+          (hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["kasir"]) && isValidAutomationJob(request.resource.data) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'retryCount', 'nextRetryAt', 'errorMessage', 'updatedAt', 'sentAt']))
+        );
       }
 
       // OUTBOX AUDIT LOGS
       match /notificationLogs/{logId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
-        allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidNotificationLog(request.resource.data);
+        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidNotificationLog(request.resource.data);
       }
 
       // PRE-PROCESSED DIURNAL METRIC REPORTING DB
       match /dailyReports/{reportId} {
-        allow read: if hasTenantOutletAccess(tenantId, resource.data.outletId);
+        allow read: if hasTenantReadAccess(tenantId);
         allow create: if hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidDailyReport(request.resource.data);
         allow update: if hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidDailyReport(request.resource.data);
       }

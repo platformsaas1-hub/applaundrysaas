@@ -89,7 +89,7 @@ export default function App() {
                 <Route 
                   path="/financials" 
                   element={
-                    <RoleGuard allowedRoles={['owner', 'admin', 'kasir']}>
+                    <RoleGuard allowedRoles={['owner', 'admin']}>
                       <FinancialsPage />
                     </RoleGuard>
                   } 
@@ -99,7 +99,7 @@ export default function App() {
                 <Route 
                   path="/automation" 
                   element={
-                    <RoleGuard allowedRoles={['owner', 'admin', 'kasir']}>
+                    <RoleGuard allowedRoles={['owner', 'admin']}>
                       <AutomationCenterPage />
                     </RoleGuard>
                   } 

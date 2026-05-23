@@ -27,11 +27,13 @@ import {
   Filter, 
   FileText,
   Send,
-  Loader2
+  Loader2,
+  ShieldAlert
 } from 'lucide-react';
 import { AutomationJob, AutomationNotificationLog, Transaction } from '../types';
 import { runProcessorCycle, triggerManualCustomMessage } from '../services/automation/automationEngine';
 import { formatRupiah } from '../utils/formatting';
+import { canAccessRoute } from '../utils/rbac';
 
 export function AutomationCenterPage() {
   const { userProfile } = useAuth();
@@ -59,6 +61,7 @@ export function AutomationCenterPage() {
   // 1. Subscribe to Real-Time Automation Jobs List
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/automation')) return;
 
     const jobsRef = collection(db, 'tenants', tenantId, 'automationJobs');
     const q = query(
@@ -79,11 +82,12 @@ export function AutomationCenterPage() {
     });
 
     return unsubscribe;
-  }, [tenantId]);
+  }, [tenantId, userProfile]);
 
   // 2. Subscribe to Real-Time Immutable Notification Logs List
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/automation')) return;
 
     const logsRef = collection(db, 'tenants', tenantId, 'notificationLogs');
     const q = query(
@@ -103,11 +107,12 @@ export function AutomationCenterPage() {
     });
 
     return unsubscribe;
-  }, [tenantId]);
+  }, [tenantId, userProfile]);
 
   // 3. Subscribe to active non-deleted Transactions to populate manual selects
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/automation')) return;
 
     const txRef = collection(db, 'tenants', tenantId, 'transactions');
     const q = query(
@@ -128,7 +133,20 @@ export function AutomationCenterPage() {
     });
 
     return unsubscribe;
-  }, [tenantId]);
+  }, [tenantId, userProfile]);
+
+  // Custom route check
+  if (userProfile && !canAccessRoute(userProfile.role, '/automation')) {
+    return (
+      <div className="h-[calc(100vh-140px)] flex flex-col justify-center items-center text-slate-500 p-8 text-center bg-slate-50 rounded-2xl mx-6 my-4 border border-slate-200 select-none">
+        <ShieldAlert className="w-14 h-14 text-rose-500 mb-4 animate-pulse" />
+        <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Akses Ditolak</h2>
+        <p className="text-xs text-slate-500 mt-2 max-w-md font-semibold font-sans">
+          Role Anda tidak memiliki izin untuk halaman ini.
+        </p>
+      </div>
+    );
+  }
 
   // Execute queue processor manually
   const handleForceProcessQueue = async () => {

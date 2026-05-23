@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { formatRupiah } from '../utils/formatting';
 import { Expense, ShiftClosing, Transaction } from '../types';
+import { canAccessRoute } from '../utils/rbac';
 import { 
   DollarSign, 
   Plus, 
@@ -87,22 +88,10 @@ export function FinancialsPage() {
   const [actualCashInput, setActualCashInput] = useState('');
   const [closeShiftNotes, setCloseShiftNotes] = useState('');
 
-  // 1. Double check permission
-  if (currentRole === 'pegawai') {
-    return (
-      <div id="unauthorized-expense-screen" className="p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs max-w-md mx-auto mt-16 space-y-4">
-        <ShieldAlert className="w-16 h-16 text-rose-500 mx-auto animate-bounce" />
-        <h2 className="text-lg font-extrabold text-slate-800 uppercase tracking-tight">Akses Ditolak [Pegawai]</h2>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Sesuai SOP LaundryKu Enterprise, staf pegawai dilarang keras mengakses laporan jajaran keuangan, pengeluaran kas, maupun pembukuan mesin kassa shift.
-        </p>
-      </div>
-    );
-  }
-
-  // 2. Real-time synchronizations of EXPENSES (Tenant-isolated, bounded query)
+  // 1. Real-time synchronizations of EXPENSES (Tenant-isolated, bounded query)
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/financials')) return;
 
     const expenseRef = collection(db, 'tenants', tenantId, 'expenses');
     const q = query(
@@ -123,11 +112,12 @@ export function FinancialsPage() {
     });
 
     return unsubscribe;
-  }, [tenantId]);
+  }, [tenantId, userProfile]);
 
-  // 3. Real-time synchronizations of Shift history (Tenant-isolated, bounded query)
+  // 2. Real-time synchronizations of Shift history (Tenant-isolated, bounded query)
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/financials')) return;
 
     const shiftsRef = collection(db, 'tenants', tenantId, 'shiftClosings');
     const q = query(
@@ -157,11 +147,12 @@ export function FinancialsPage() {
     });
 
     return unsubscribe;
-  }, [tenantId, activeOutletId, currentUser?.uid]);
+  }, [tenantId, activeOutletId, currentUser?.uid, userProfile]);
 
   // 4. Bounded synchronization of all transaction cash records to sum shift expectations
   useEffect(() => {
     if (!tenantId) return;
+    if (userProfile && !canAccessRoute(userProfile.role, '/financials')) return;
 
     const txRef = collection(db, 'tenants', tenantId, 'transactions');
     const q = query(
@@ -182,7 +173,20 @@ export function FinancialsPage() {
     });
 
     return unsubscribe;
-  }, [tenantId]);
+  }, [tenantId, userProfile]);
+
+  // Double check route-based permission after declaring hooks safely 
+  if (userProfile && !canAccessRoute(userProfile.role, '/financials')) {
+    return (
+      <div id="unauthorized-expense-screen" className="p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs max-sm mx-auto mt-16 space-y-4 select-none">
+        <ShieldAlert className="w-14 h-14 text-rose-500 mx-auto animate-pulse" />
+        <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Akses Ditolak</h2>
+        <p className="text-xs text-slate-500 mt-2 font-semibold font-sans">
+          Role Anda tidak memiliki izin untuk halaman ini.
+        </p>
+      </div>
+    );
+  }
 
   // 5. Active dynamic computations of active shift totals
   const activeShiftTransactions = useMemo(() => {

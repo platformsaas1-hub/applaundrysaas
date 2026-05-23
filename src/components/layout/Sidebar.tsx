@@ -32,7 +32,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       to: '/dashboard',
       label: 'Ringkasan Dashboard',
       icon: LayoutDashboard,
-      allowedRoles: ['owner', 'admin', 'kasir', 'pegawai']
+      allowedRoles: ['owner', 'admin', 'kasir']
     },
     {
       to: '/pos',
@@ -62,13 +62,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       to: '/financials',
       label: 'Keuangan & Shift',
       icon: DollarSign,
-      allowedRoles: ['owner', 'admin', 'kasir']
+      allowedRoles: ['owner', 'admin']
     },
     {
       to: '/automation',
       label: 'Automation Center',
       icon: Zap,
-      allowedRoles: ['owner', 'admin', 'kasir']
+      allowedRoles: ['owner', 'admin']
     }
   ];
 

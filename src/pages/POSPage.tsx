@@ -22,7 +22,7 @@ import { calculatePaymentDetails } from '../utils/invoice';
 import { triggerAutoReceipt } from '../services/automation/automationEngine';
 import { getServicesByOutlet } from '../services/services';
 import { ShieldAlert } from 'lucide-react';
-import { canAccessOutlet } from '../utils/rbac';
+import { canAccessOutlet, canAccessRoute } from '../utils/rbac';
 
 export function POSPage() {
   const navigate = useNavigate();
@@ -37,6 +37,19 @@ export function POSPage() {
   const [loadingShiftCheck, setLoadingShiftCheck] = useState(true);
 
   const tenantId = userProfile?.tenantId || null;
+
+  // Custom route check
+  if (userProfile && !canAccessRoute(userProfile.role, '/pos')) {
+    return (
+      <div className="h-[calc(100vh-140px)] flex flex-col justify-center items-center text-slate-500 p-8 text-center bg-slate-50 rounded-2xl mx-6 my-4 border border-slate-200 select-none">
+        <ShieldAlert className="w-14 h-14 text-rose-500 mb-4 animate-pulse" />
+        <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Akses Ditolak</h2>
+        <p className="text-xs text-slate-500 mt-2 max-w-md font-semibold font-sans">
+          Role Anda tidak memiliki izin untuk halaman ini.
+        </p>
+      </div>
+    );
+  }
 
   // Sync active cashier shift state in real term
   useEffect(() => {
