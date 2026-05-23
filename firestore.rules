@@ -36,10 +36,12 @@ service cloud.firestore {
     }
 
     function hasOutletAccess(outletId) {
-      return isSignedIn() && (
-        getUserData().role in ['owner', 'admin'] ||
-        (outletId != null && getUserData().assignedOutletIds != null && outletId in getUserData().assignedOutletIds)
-      );
+      return isSignedIn() && hasOutletAccessAuthenticated(outletId, getUserData());
+    }
+
+    function hasOutletAccessAuthenticated(outletId, userData) {
+      return userData.role in ['owner', 'admin'] ||
+             (outletId != null && userData.assignedOutletIds != null && outletId in userData.assignedOutletIds);
     }
 
     // Check write/update/create access (supports registration batch by checking getAfter)
@@ -51,13 +53,16 @@ service cloud.firestore {
 
     // Check custom outlet specific access (on read/list operations)
     function hasTenantOutletAccess(tenantId, outletId) {
-      return isSignedIn() &&
-             getUserData().tenantId == tenantId && (
-               getUserData().role == "owner" ||
-               getUserData().role == "admin" ||
-               (getUserData().assignedOutletIds != null && outletId in getUserData().assignedOutletIds) ||
-               getUserData().activeOutletId == outletId
-             );
+      return isSignedIn() && hasTenantOutletAccessAuthenticated(tenantId, outletId, getUserData());
+    }
+
+    function hasTenantOutletAccessAuthenticated(tenantId, outletId, userData) {
+      return userData.tenantId == tenantId && (
+        userData.role == "owner" ||
+        userData.role == "admin" ||
+        (userData.assignedOutletIds != null && outletId in userData.assignedOutletIds) ||
+        userData.activeOutletId == outletId
+      );
     }
 
     // Check custom outlet specific write/update access (supports user creation stage checking getAfter)
@@ -336,7 +341,11 @@ service cloud.firestore {
 
       // TRANSACTION AND POINT-OF-SALE OPERATOR
       match /transactions/{transactionId} {
-        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow get: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow list: if request.auth != null && hasTenantAccess(tenantId) && (
+          getUserData().role in ["owner", "admin"] ||
+          getUserData().role in ["kasir", "pegawai"]
+        );
         allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidTransaction(request.resource.data);
         
         // Kasir, admin, owner can update transaction fields; pegawai can only update status/worker details
@@ -363,7 +372,11 @@ service cloud.firestore {
 
       // EXPENSES
       match /expenses/{expenseId} {
-        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow get: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow list: if request.auth != null && hasTenantAccess(tenantId) && (
+          getUserData().role in ["owner", "admin"] ||
+          getUserData().role in ["kasir", "pegawai"]
+        );
         allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidExpense(request.resource.data);
         allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin"]) && isValidExpense(request.resource.data);
         allow delete: if request.auth != null && hasTenantAccess(resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin"]);
@@ -371,7 +384,11 @@ service cloud.firestore {
 
       // SHIFT CLOSINGS
       match /shiftClosings/{shiftId} {
-        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow get: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow list: if request.auth != null && hasTenantAccess(tenantId) && (
+          getUserData().role in ["owner", "admin"] ||
+          getUserData().role in ["kasir", "pegawai"]
+        );
         allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
         allow update: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(resource.data.outletId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, resource.data.outletId, ["owner", "admin", "kasir"]) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidShiftClosing(request.resource.data);
       }
@@ -395,7 +412,11 @@ service cloud.firestore {
 
       // OUTBOX AUDIT LOGS
       match /notificationLogs/{logId} {
-        allow read: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow get: if request.auth != null && (hasTenantAccess(resource.data.tenantId) || hasTenantAccess(tenantId)) && hasOutletAccess(resource.data.outletId);
+        allow list: if request.auth != null && hasTenantAccess(tenantId) && (
+          getUserData().role in ["owner", "admin"] ||
+          getUserData().role in ["kasir", "pegawai"]
+        );
         allow create: if request.auth != null && hasTenantAccess(request.resource.data.tenantId) && hasOutletAccess(request.resource.data.outletId) && hasTenantOutletWriteAccess(tenantId, request.resource.data.outletId, ["owner", "admin", "kasir"]) && isValidNotificationLog(request.resource.data);
       }
 
