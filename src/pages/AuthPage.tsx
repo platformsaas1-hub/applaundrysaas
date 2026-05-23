@@ -3,18 +3,25 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
-import { Shield, ChevronRight, Store, Building2 } from 'lucide-react';
+import { Shield, ChevronRight, Store, Building2, Mail, Lock } from 'lucide-react';
+import { auth } from '../firebase/config';
+import { signOut } from 'firebase/auth';
 
 interface AuthPageProps {
   onboardingOnly?: boolean;
 }
 
 export function AuthPage({ onboardingOnly = false }: AuthPageProps) {
-  const { loginWithGoogle, registerNewTenantAndOwner, currentUser, userProfile } = useAuth();
+  const { loginWithGoogle, loginWithEmail, registerNewTenantAndOwner, currentUser, userProfile } = useAuth();
   const [businessName, setBusinessName] = useState('');
   const [outletName, setOutletName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Email login fields
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,6 +41,56 @@ export function AuthPage({ onboardingOnly = false }: AuthPageProps) {
     } catch (err: any) {
       console.error(err);
       setErrorMsg('Gagal menyinkronkan autentikasi akun Google. Silakan coba kembali.');
+    }
+  };
+
+  // Handle Email/Password Login Action
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Email dan password wajib diisi.');
+      return;
+    }
+
+    try {
+      setEmailLoading(true);
+      setErrorMsg('');
+      const cred = await loginWithEmail(email, password);
+
+      if (cred.user) {
+        // Query users collection for this UID to ensure they are registered in the tenant system
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/config');
+        const userDocRef = doc(db, 'users', cred.user.uid);
+        const userSnapshot = await getDoc(userDocRef);
+
+        if (!userSnapshot.exists()) {
+          // If profile does not exist in Firestore, they are not registered in the tenant system!
+          await signOut(auth); // Sign out so they don't get stuck in auth change listener
+          setErrorMsg('Akun belum terdaftar dalam sistem tenant.');
+          return;
+        }
+
+        navigate(fromPath, { replace: true });
+      }
+    } catch (err: any) {
+      console.error("Email login failure:", err);
+      const errorCode = err.code || '';
+      if (
+        errorCode === 'auth/wrong-password' || 
+        errorCode === 'auth/invalid-credential' || 
+        errorCode === 'auth/invalid-login-credentials'
+      ) {
+        setErrorMsg('Email atau password salah.');
+      } else if (errorCode === 'auth/user-not-found') {
+        setErrorMsg('User tidak ditemukan.');
+      } else if (errorCode === 'auth/invalid-email') {
+        setErrorMsg('Format email tidak valid.');
+      } else {
+        setErrorMsg('Email atau password salah.');
+      }
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -143,7 +200,7 @@ export function AuthPage({ onboardingOnly = false }: AuthPageProps) {
         </div>
 
         <Card className="border-slate-205">
-          <CardHeader subtitle="Gunakan SSO akun Google Anda untuk validasi">
+          <CardHeader subtitle="Gunakan SSO Google atau alamat email terdaftar">
             Akses Hak Masuk Pengguna
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
@@ -171,10 +228,57 @@ export function AuthPage({ onboardingOnly = false }: AuthPageProps) {
 
             <div className="relative flex py-2 items-center">
               <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-4 text-[10px] text-slate-400 tracking-wide font-extrabold uppercase">
-                Zero Trust Privacy
+              <span className="flex-shrink mx-4 text-[9px] text-slate-400 tracking-wider font-extrabold uppercase">
+                ATAU LOGIN DENGAN EMAIL
               </span>
               <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <form onSubmit={handleEmailLogin} className="space-y-3.5">
+              <div className="space-y-1.5 text-left">
+                <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" /> Alamat Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-500 pr-3 focus:outline-none placeholder:text-slate-300"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-slate-400" /> Kata Sandi (Password)
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-500 pr-3 focus:outline-none placeholder:text-slate-300"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full text-xs font-bold py-2.5 mt-2"
+                isLoading={emailLoading}
+              >
+                Masuk ke Aplikasi
+              </Button>
+            </form>
+
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-slate-100"></div>
+              <span className="flex-shrink mx-4 text-[9px] text-slate-350 tracking-wide font-extrabold uppercase">
+                Zero Trust Privacy & Isolation
+              </span>
+              <div className="flex-grow border-t border-slate-100"></div>
             </div>
 
             <div className="flex items-start gap-2.5 text-[10px] text-slate-500 leading-relaxed font-sans bg-slate-50 p-3 rounded-lg border border-slate-150">

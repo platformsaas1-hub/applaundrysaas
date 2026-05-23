@@ -4,6 +4,7 @@ import {
   onAuthStateChanged, 
   signOut, 
   signInWithPopup,
+  signInWithEmailAndPassword,
   UserCredential
 } from 'firebase/auth';
 import { 
@@ -23,6 +24,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   loginWithGoogle: () => Promise<UserCredential>;
+  loginWithEmail: (email: string, password: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   registerNewTenantAndOwner: (businessName: string, activeOutletName: string) => Promise<void>;
   setProfileActiveOutlet: (outletId: string) => Promise<void>;
@@ -73,6 +75,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return credential;
     } catch (error) {
       console.error("Google sign-in popup error:", error);
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  // Email/Password login
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      return credential;
+    } catch (error) {
+      console.error("Email sign-in error:", error);
       setLoading(false);
       throw error;
     }
@@ -272,6 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userProfile, 
       loading, 
       loginWithGoogle, 
+      loginWithEmail,
       logout,
       registerNewTenantAndOwner,
       setProfileActiveOutlet
