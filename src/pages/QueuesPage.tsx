@@ -17,6 +17,8 @@ import { AntreanView } from '../components/AntreanView';
 import { NotaDigital } from '../components/NotaDigital';
 import { Transaction } from '../types';
 import { triggerAutoReady, triggerAutoPartialPaymentReminder } from '../services/automation/automationEngine';
+import { ShieldAlert } from 'lucide-react';
+import { canAccessOutlet } from '../utils/rbac';
 
 export function QueuesPage() {
   const { userProfile } = useAuth();
@@ -46,10 +48,13 @@ export function QueuesPage() {
       snapshot.forEach((docSnap) => {
         list.push(docSnap.data() as Transaction);
       });
-      // Optional: Filter by active outlet if user is on specific branch
-      const filteredList = activeOutletId 
-        ? list.filter(tx => tx.outletId === activeOutletId)
-        : list;
+      // Filter strictly by activeOutletId if set, and check access permissions via canAccessOutlet
+      const filteredList = list.filter((tx) => {
+        if (activeOutletId && tx.outletId !== activeOutletId) {
+          return false;
+        }
+        return canAccessOutlet(userProfile, tx.outletId);
+      });
       
       setTransactions(filteredList);
     }, (error) => {
@@ -153,6 +158,21 @@ export function QueuesPage() {
 
   // Retrieve active branch object for receipt headers
   const activeOutletObj = outlets.find(o => o.outletId === activeOutletId);
+
+  if (activeOutletId && !canAccessOutlet(userProfile, activeOutletId)) {
+    return (
+      <div className="h-[calc(100vh-140px)] flex flex-col justify-center items-center text-slate-500 p-8 text-center bg-slate-50 rounded-2xl mx-6 my-4 border border-slate-200">
+        <ShieldAlert className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
+        <h2 className="text-lg font-extrabold text-slate-800">Akses Cabang Terbatas</h2>
+        <p className="text-sm text-slate-500 mt-2 max-w-md">
+          Akun Anda ({userProfile?.role}) tidak diberikan wewenang untuk memproses atau melihat antrean di cabang <strong>{activeOutletObj?.name || activeOutletId}</strong>.
+        </p>
+        <p className="text-xs text-slate-400 mt-1 max-w-sm">
+          Silakan hubungi pemilik usaha (owner) atau admin untuk mendaftarkan akun Anda di cabang ini.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col overflow-hidden">

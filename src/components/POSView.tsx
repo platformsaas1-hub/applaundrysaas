@@ -12,6 +12,7 @@ interface POSViewProps {
   onAddCustomer: (cust: Omit<Customer, 'customerId' | 'createdAt'>) => string; // returns generated customerId
   onAddTransaction: (transaction: Omit<Transaction, 'transactionId' | 'receivedAt'>) => void;
   trackAction: (reads: number, writes: number, savedReads?: number) => void;
+  loadingServices?: boolean;
 }
 
 export const POSView: React.FC<POSViewProps> = ({
@@ -22,7 +23,8 @@ export const POSView: React.FC<POSViewProps> = ({
   activeOutletId,
   onAddCustomer,
   onAddTransaction,
-  trackAction
+  trackAction,
+  loadingServices = false
 }) => {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [searchCustomerQuery, setSearchCustomerQuery] = useState<string>('');
@@ -388,16 +390,32 @@ export const POSView: React.FC<POSViewProps> = ({
 
       {/* Center Dynamic Column - Layanan Selector */}
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+        {/* Active Outlet Banner */}
+        <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border-b border-blue-100/60 px-5 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-semibold text-slate-600">
+              Outlet Aktif: <strong className="text-blue-700 font-extrabold">{outlets.find(o => o.outletId === activeOutletId)?.name || 'Cabang Utama'}</strong>
+            </span>
+          </div>
+          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+            POS Casher
+          </span>
+        </div>
+
         {/* Service Type Tabs */}
         <div className="bg-white border-b border-slate-200 p-2 shrink-0 flex items-center justify-between">
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 overflow-x-auto max-w-full">
             {(['kiloan', 'satuan', 'sepatu', 'karpet'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
+                className={`px-4 py-2 text-xs font-extrabold uppercase rounded-lg transition-all transform active:scale-95 ${
                   activeTab === tab
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
                 }`}
               >
@@ -405,36 +423,67 @@ export const POSView: React.FC<POSViewProps> = ({
               </button>
             ))}
           </div>
-          <span className="text-xs text-slate-400 font-mono pr-2">Local Price Rules</span>
+          <span className="text-[10px] text-slate-400 font-mono pr-2 hidden sm:inline-block">Local Catalog Rates</span>
         </div>
 
         {/* Services Items Grid */}
         <div className="flex-1 overflow-y-auto p-5">
-          <div className="grid grid-cols-2 gap-4">
-            {filteredServices.map(svc => (
-              <button
-                key={svc.serviceId}
-                onClick={() => handleAddToCart(svc)}
-                className="bg-white p-4 rounded-xl border border-slate-200 text-left hover:border-blue-500 hover:shadow transition-all group flex flex-col justify-between h-28"
-              >
-                <div>
+          {loadingServices ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(idx => (
+                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 h-28 space-y-3 animate-pulse flex flex-col justify-between">
                   <div className="flex justify-between items-start">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                      {svc.type === 'kiloan' ? `${weightInput}kg x` : svc.unit}
-                    </span>
-                    <span className="text-blue-500 group-hover:text-blue-600 font-bold text-xs">+ Tambah</span>
+                    <div className="h-4 w-12 bg-slate-200 rounded"></div>
+                    <div className="h-4 w-16 bg-slate-200 rounded"></div>
                   </div>
-                  <h4 className="font-bold text-slate-800 text-sm mt-2 line-clamp-1 group-hover:text-blue-700">{svc.name}</h4>
+                  <div className="h-4 w-3/4 bg-slate-200 rounded"></div>
+                  <div className="flex justify-between">
+                    <div className="h-3 w-16 bg-slate-200 rounded"></div>
+                    <div className="h-4 w-20 bg-slate-200 rounded"></div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-baseline mt-2">
-                  <span className="text-xs text-slate-400">Estimasi: {svc.estimatedDays} Hari</span>
-                  <span className="font-extrabold text-slate-700 text-sm">
-                    {formatRupiah(svc.pricePerUnit)}<span className="text-[10px] text-slate-400 font-normal">/{svc.unit}</span>
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : services.length === 0 ? (
+            <div className="h-full flex flex-col justify-center items-center text-slate-500 py-12 text-center">
+              <AlertCircle className="w-10 h-10 text-slate-300 mb-2" />
+              <p className="text-xs font-bold text-slate-600">Tidak ada layanan di outlet ini</p>
+              <p className="text-[10px] text-slate-400 mt-1 max-w-xs leading-relaxed">Hubungi administrator atau tambahkan layanan baru di menu Layanan khusus untuk outlet ini.</p>
+            </div>
+          ) : filteredServices.length === 0 ? (
+            <div className="h-full flex flex-col justify-center items-center text-slate-500 py-12 text-center">
+              <AlertCircle className="w-10 h-10 text-slate-300 mb-2" />
+              <p className="text-xs font-bold text-slate-600">Layanan tidak ditemukan</p>
+              <p className="text-[10px] text-slate-400 mt-1 max-w-xs leading-relaxed">Tidak ada layanan aktif bertipe "{activeTab}" di outlet ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredServices.map(svc => (
+                <button
+                  key={svc.serviceId}
+                  onClick={() => handleAddToCart(svc)}
+                  className="bg-white p-4 rounded-xl border border-slate-200 text-left hover:border-blue-500 hover:shadow-md active:scale-95 transition-all group flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 h-1.5 w-0 bg-blue-500 group-hover:w-full transition-all duration-300" />
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                        {svc.type === 'kiloan' ? `${weightInput}kg x` : svc.unit}
+                      </span>
+                      <span className="text-blue-500 group-hover:text-blue-600 font-bold text-xs transition-colors shrink-0">+ Tambah</span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-sm mt-2 line-clamp-1 group-hover:text-blue-700 transition-colors">{svc.name}</h4>
+                  </div>
+                  <div className="flex justify-between items-baseline mt-2">
+                    <span className="text-[10px] text-slate-400 font-medium">Estimasi: {svc.estimatedDays} Hari</span>
+                    <span className="font-extrabold text-slate-700 text-sm">
+                      {formatRupiah(svc.pricePerUnit)}<span className="text-[10px] text-slate-400 font-normal">/{svc.unit}</span>
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -443,53 +492,56 @@ export const POSView: React.FC<POSViewProps> = ({
         <div className="p-4 border-b border-slate-100 bg-slate-50 pr-4 flex items-center gap-2 text-slate-800 font-bold shrink-0">
           <ShoppingBag className="w-4 h-4 text-blue-600" />
           <h3 className="text-sm uppercase tracking-wide">Ringkasan Keranjang</h3>
-          <span className="ml-auto text-xs font-mono font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded">
+          <span className="ml-auto text-xs font-mono font-bold bg-slate-200 text-slate-650 px-2.5 py-0.5 rounded-full">
             {cart.length} Item
           </span>
         </div>
 
         {/* Cart Item Cards list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 divide-y divide-slate-50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col justify-center items-center text-slate-400 text-center space-y-2 py-12">
-              <ShoppingBag className="w-10 h-10 text-slate-200" />
-              <p className="text-xs font-semibold">Keranjang Kosong</p>
-              <p className="text-[10px] text-slate-400 px-4">Pilih jenis layanan di bagian tengah lantas tentukan timbangan kiloan.</p>
+              <div className="p-3 bg-slate-50 rounded-full text-slate-300 border border-slate-100">
+                <ShoppingBag className="w-8 h-8" />
+              </div>
+              <p className="text-xs font-semibold text-slate-600">Keranjang Masih Kosong</p>
+              <p className="text-[10px] text-slate-400 px-6 leading-relaxed">Pilih jenis layanan di bagian tengah lantas tentukan timbangan berat kiloan di sebelah kiri sebelum mendaftarkan.</p>
             </div>
           ) : (
             cart.map((item, index) => (
-              <div key={item.serviceId} className={`pt-3 ${index === 0 ? 'pt-0' : ''} flex flex-col gap-2 font-sans`}>
-                <div className="flex justify-between">
-                  <h5 className="text-xs font-bold text-slate-700 block max-w-[180px] truncate">{item.name}</h5>
+              <div key={item.serviceId} className="flex flex-col gap-2 font-sans bg-slate-50/50 p-3 rounded-lg border border-slate-200/60 hover:bg-slate-50 hover:border-blue-200 transition-all border-l-4 border-l-blue-500 shadow-3xs relative group select-none">
+                <div className="flex justify-between items-start">
+                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Item #{index + 1}</span>
                   <button 
                     onClick={() => handleRemoveFromCart(item.serviceId)}
-                    className="text-[10px] text-rose-500 font-bold hover:underline ml-1"
+                    className="text-[10px] text-rose-500 font-bold hover:underline opacity-80 hover:opacity-100"
                   >
                     Hapus
                   </button>
                 </div>
+                <h5 className="text-xs font-bold text-slate-800 max-w-[200px] truncate leading-snug">{item.name}</h5>
                 
-                <div className="flex justify-between items-center bg-slate-50 p-1.5 rounded border border-slate-100">
-                  <div className="flex items-center gap-1.5">
+                <div className="flex justify-between items-center bg-white p-1.5 rounded border border-slate-100 mt-1">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleUpdateQty(item.serviceId, -1)}
-                      className="p-1 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors"
-                      title="Kurangi"
+                      className="p-1 text-slate-600 bg-slate-50 border border-slate-200 rounded-md hover:bg-slate-100 transition-colors"
+                      title="Kurangi Qty"
                     >
                       <Minus className="w-2.5 h-2.5" />
                     </button>
-                    <span className="font-mono text-xs font-bold px-1">{item.qty}</span>
+                    <span className="font-mono text-xs font-bold px-1.5 text-slate-800">{item.qty}</span>
                     <button
                       type="button"
                       onClick={() => handleUpdateQty(item.serviceId, 1)}
-                      className="p-1 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors"
-                      title="Tambah"
+                      className="p-1 text-slate-600 bg-slate-50 border border-slate-200 rounded-md hover:bg-slate-100 transition-colors"
+                      title="Tambah Qty"
                     >
                       <Plus className="w-2.5 h-2.5" />
                     </button>
                   </div>
-                  <span className="text-xs font-extrabold text-slate-800">{formatRupiah(item.totalPrice)}</span>
+                  <span className="text-xs font-extrabold text-blue-600 font-mono">{formatRupiah(item.totalPrice)}</span>
                 </div>
               </div>
             ))

@@ -18,6 +18,7 @@ export interface UserProfile {
   phone?: string;
   photoURL?: string;
   activeOutletId: string;
+  assignedOutletIds?: string[];
   isActive?: boolean;
   isDeleted?: boolean;
   createdAt: string | Timestamp | any;
@@ -53,20 +54,21 @@ export interface Tenant {
  */
 export interface Outlet {
   outletId: string;
-  tenantId?: string;
-  code?: string;
+  tenantId: string;
+  code: string;
+  codeLower: string;
   name: string;
   address: string;
   phone?: string;
   managerName?: string;
   printerName?: string;
   receiptFooter?: string;
-  isMainOutlet?: boolean;
-  active?: boolean;
-  createdAt?: string | Timestamp | any;
-  updatedAt?: string | Timestamp | any;
-  isDeleted?: boolean;
-  deletedAt?: string | Timestamp | null | any;
+  isMainOutlet: boolean;
+  active: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  isDeleted: boolean;
+  deletedAt?: Timestamp | null;
   deletedBy?: string | null;
 
   // Backwards compatibility
@@ -79,25 +81,46 @@ export interface Outlet {
  */
 export interface LaundryService {
   serviceId: string;
-  tenantId?: string;
+  tenantId: string;
+
   name: string;
-  category?: 'kiloan' | 'satuan' | 'express' | 'vip' | 'dry_clean' | 'other';
-  unit?: 'kg' | 'pcs' | 'item' | 'pair' | 'm2' | string;
-  price?: number;
-  estimatedDurationHours?: number;
-  isExpress?: boolean;
-  outletIds?: string[];
+  nameLower: string;
+
+  category:
+    | 'kiloan'
+    | 'satuan'
+    | 'express'
+    | 'vip'
+    | 'dry_clean'
+    | 'other';
+
+  unit:
+    | 'kg'
+    | 'pcs'
+    | 'item';
+
+  price: number;
+
+  estimatedDurationHours: number;
+
+  isExpress: boolean;
+
+  outletIds: string[];
+
   description?: string;
-  active?: boolean;
-  createdAt?: string | Timestamp | any;
-  updatedAt?: string | Timestamp | any;
-  isDeleted?: boolean;
-  deletedAt?: string | Timestamp | null | any;
+
+  active: boolean;
+
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+
+  isDeleted: boolean;
+  deletedAt?: Timestamp | null;
   deletedBy?: string | null;
 
   // Backwards compatibility fields
-  pricePerUnit: number;
-  estimatedDays: number;
+  pricePerUnit?: number;
+  estimatedDays?: number;
   unitPrice?: number;
   type?: 'kiloan' | 'satuan' | 'sepatu' | 'karpet' | 'other' | string;
   isActive?: boolean;

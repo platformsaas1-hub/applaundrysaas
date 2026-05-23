@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu, Wifi, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
+import { canAccessOutlet } from '../../utils/rbac';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -20,6 +21,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
   };
 
   const userInitial = userProfile?.name?.charAt(0).toUpperCase() || 'U';
+
+  const accessibleOutlets = outlets.filter((outlet) =>
+    canAccessOutlet(userProfile, outlet.outletId)
+  );
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-10 shadow-3xs">
@@ -43,7 +48,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
             onChange={handleBranchChange}
             className="bg-slate-150 hover:bg-slate-200 py-1.5 px-3 rounded-lg text-xs font-bold text-slate-700 border border-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            {outlets.map((outlet) => (
+            {accessibleOutlets.map((outlet) => (
               <option key={outlet.outletId} value={outlet.outletId}>
                 {outlet.name}
               </option>

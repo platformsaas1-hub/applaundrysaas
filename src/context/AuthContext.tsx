@@ -11,7 +11,8 @@ import {
   getDoc, 
   setDoc, 
   writeBatch, 
-  collection 
+  collection,
+  Timestamp 
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase/config';
 import { UserProfile, Tenant, Outlet, LaundryService } from '../types';
@@ -121,50 +122,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 2. Default Outlet Definition
     const outletData: Outlet = {
       outletId,
+      tenantId,
+      code: 'OT-UTAMA',
+      codeLower: 'ot-utama',
       name: activeOutletName,
       address: "Jl. Centered No. 1, Laundry Center",
       phone: currentUser.phoneNumber || "081234567890",
-      createdAt: new Date().toISOString()
+      isMainOutlet: true,
+      active: true,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false
     };
     const outletRef = doc(db, 'tenants', tenantId, 'outlets', outletId);
     batch.set(outletRef, outletData);
 
     // 3. Default Catalog Services
-    const defaultServices: Omit<LaundryService, 'createdAt'>[] = [
+    const defaultServices: Omit<LaundryService, 'createdAt' | 'updatedAt'>[] = [
       {
         serviceId: 'svc_cuci_kering',
+        tenantId,
         name: 'Cuci Kering Saja',
-        type: 'kiloan',
+        nameLower: 'cuci kering saja',
+        category: 'kiloan',
         unit: 'kg',
+        price: 6000,
+        estimatedDurationHours: 24,
+        isExpress: false,
+        outletIds: [outletId],
+        active: true,
+        isDeleted: false,
         pricePerUnit: 6000,
         estimatedDays: 1,
+        type: 'kiloan',
         isActive: true
       },
       {
         serviceId: 'svc_cuci_setrika',
+        tenantId,
         name: 'Cuci Setrika Reguler',
-        type: 'kiloan',
+        nameLower: 'cuci setrika reguler',
+        category: 'kiloan',
         unit: 'kg',
+        price: 8000,
+        estimatedDurationHours: 48,
+        isExpress: false,
+        outletIds: [outletId],
+        active: true,
+        isDeleted: false,
         pricePerUnit: 8000,
         estimatedDays: 2,
+        type: 'kiloan',
         isActive: true
       },
       {
         serviceId: 'svc_setrika',
+        tenantId,
         name: 'Setrika Premium',
-        type: 'kiloan',
+        nameLower: 'setrika premium',
+        category: 'kiloan',
         unit: 'kg',
+        price: 5000,
+        estimatedDurationHours: 24,
+        isExpress: false,
+        outletIds: [outletId],
+        active: true,
+        isDeleted: false,
         pricePerUnit: 5000,
         estimatedDays: 1,
+        type: 'kiloan',
         isActive: true
       },
       {
         serviceId: 'svc_sepatu_canvas',
+        tenantId,
         name: 'Cuci Sepatu Canvas',
-        type: 'sepatu',
-        unit: 'pair',
+        nameLower: 'cuci sepatu canvas',
+        category: 'satuan',
+        unit: 'pcs',
+        price: 35000,
+        estimatedDurationHours: 72,
+        isExpress: false,
+        outletIds: [outletId],
+        active: true,
+        isDeleted: false,
         pricePerUnit: 35000,
         estimatedDays: 3,
+        type: 'satuan',
         isActive: true
       }
     ];
@@ -173,7 +217,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const svcRef = doc(db, 'tenants', tenantId, 'services', svc.serviceId);
       batch.set(svcRef, {
         ...svc,
-        createdAt: new Date().toISOString()
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       });
     });
 

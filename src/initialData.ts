@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import { Tenant, Outlet, LaundryService, Customer, Transaction, DailyReport } from './types';
 
 export const INITIAL_TENANT: Tenant = {
@@ -12,90 +13,167 @@ export const INITIAL_TENANT: Tenant = {
 export const INITIAL_OUTLETS: Outlet[] = [
   {
     outletId: 'outlet_depok',
+    tenantId: 'tenant_laundry_barokah',
+    code: 'OT-DEPOK',
+    codeLower: 'ot-depok',
     name: 'Laundry Barokah - Depok Margonda',
     address: 'Jl. Margonda Raya No. 45, Depok',
     phone: '08123456789',
-    createdAt: '2026-01-10T12:05:00Z'
+    isMainOutlet: true,
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-01-10T12:05:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-01-10T12:05:00Z')),
+    isDeleted: false
   },
   {
     outletId: 'outlet_sawangan',
+    tenantId: 'tenant_laundry_barokah',
+    code: 'OT-SAWANGAN',
+    codeLower: 'ot-sawangan',
     name: 'Laundry Barokah - Sawangan',
     address: 'Jl. Raya Sawangan No. 12, Depok',
     phone: '08987654321',
-    createdAt: '2026-03-15T09:00:00Z'
+    isMainOutlet: false,
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-03-15T09:00:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-03-15T09:00:00Z')),
+    isDeleted: false
   }
 ];
 
 export const INITIAL_SERVICES: LaundryService[] = [
   {
     serviceId: 'svc_cuci_setrika_kg',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Cuci + Setrika Reguler',
-    type: 'kiloan',
+    nameLower: 'cuci + setrika reguler',
+    category: 'kiloan',
     unit: 'kg',
+    price: 8000,
+    estimatedDurationHours: 48,
+    isExpress: false,
+    outletIds: ['outlet_depok', 'outlet_sawangan'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-01-10T12:15:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-01-10T12:15:00Z')),
+    isDeleted: false,
     pricePerUnit: 8000,
     estimatedDays: 2,
-    isActive: true,
-    createdAt: '2026-01-10T12:15:00Z'
+    type: 'kiloan'
   },
   {
     serviceId: 'svc_cuci_kering_kg',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Cuci Kering Saja',
-    type: 'kiloan',
+    nameLower: 'cuci kering saja',
+    category: 'kiloan',
     unit: 'kg',
+    price: 6000,
+    estimatedDurationHours: 24,
+    isExpress: false,
+    outletIds: ['outlet_depok', 'outlet_sawangan'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-01-11T08:00:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-01-11T08:00:00Z')),
+    isDeleted: false,
     pricePerUnit: 6000,
     estimatedDays: 1,
-    isActive: true,
-    createdAt: '2026-01-11T08:00:00Z'
+    type: 'kiloan'
   },
   {
     serviceId: 'svc_setrika_kg',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Setrika Rapi Saja',
-    type: 'kiloan',
+    nameLower: 'setrika rapi saja',
+    category: 'kiloan',
     unit: 'kg',
+    price: 5000,
+    estimatedDurationHours: 24,
+    isExpress: false,
+    outletIds: ['outlet_depok', 'outlet_sawangan'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-01-11T09:00:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-01-11T09:00:00Z')),
+    isDeleted: false,
     pricePerUnit: 5000,
     estimatedDays: 1,
-    isActive: true,
-    createdAt: '2026-01-11T09:00:00Z'
+    type: 'kiloan'
   },
   {
     serviceId: 'svc_sepatu_premium',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Sepatu Canvas / Sneakers',
-    type: 'sepatu',
+    nameLower: 'sepatu canvas / sneakers',
+    category: 'satuan',
     unit: 'pcs',
+    price: 25000,
+    estimatedDurationHours: 72,
+    isExpress: false,
+    outletIds: ['outlet_depok', 'outlet_sawangan'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-02-01T10:00:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-02-01T10:00:00Z')),
+    isDeleted: false,
     pricePerUnit: 25000,
     estimatedDays: 3,
-    isActive: true,
-    createdAt: '2026-02-01T10:00:00Z'
+    type: 'satuan'
   },
   {
     serviceId: 'svc_sepatu_leather',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Sepatu Leather Care',
-    type: 'sepatu',
+    nameLower: 'sepatu leather care',
+    category: 'satuan',
     unit: 'pcs',
+    price: 40000,
+    estimatedDurationHours: 96,
+    isExpress: false,
+    outletIds: ['outlet_depok'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-02-01T10:30:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-02-01T10:30:00Z')),
+    isDeleted: false,
     pricePerUnit: 40000,
     estimatedDays: 4,
-    isActive: true,
-    createdAt: '2026-02-01T10:30:00Z'
+    type: 'satuan'
   },
   {
     serviceId: 'svc_karpet_bulu_m2',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Karpet Bulu Tebal',
-    type: 'karpet',
-    unit: 'm2',
+    nameLower: 'karpet bulu tebal',
+    category: 'satuan',
+    unit: 'item',
+    price: 15000,
+    estimatedDurationHours: 120,
+    isExpress: false,
+    outletIds: ['outlet_depok'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-02-05T14:00:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-02-05T14:00:00Z')),
+    isDeleted: false,
     pricePerUnit: 15000,
     estimatedDays: 5,
-    isActive: true,
-    createdAt: '2026-02-05T14:00:00Z'
+    type: 'satuan'
   },
   {
     serviceId: 'svc_jas_pria',
+    tenantId: 'tenant_laundry_barokah',
     name: 'Cuci Satuan Jas / Blazer',
-    type: 'satuan',
+    nameLower: 'cuci satuan jas / blazer',
+    category: 'satuan',
     unit: 'pcs',
+    price: 20000,
+    estimatedDurationHours: 72,
+    isExpress: false,
+    outletIds: ['outlet_depok', 'outlet_sawangan'],
+    active: true,
+    createdAt: Timestamp.fromDate(new Date('2026-02-05T14:30:00Z')),
+    updatedAt: Timestamp.fromDate(new Date('2026-02-05T14:30:00Z')),
+    isDeleted: false,
     pricePerUnit: 20000,
     estimatedDays: 3,
-    isActive: true,
-    createdAt: '2026-02-05T14:30:00Z'
+    type: 'satuan'
   }
 ];
 

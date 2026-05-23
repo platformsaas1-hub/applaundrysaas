@@ -20,6 +20,9 @@ import { NotaDigital } from '../components/NotaDigital';
 import { Customer, Transaction, LaundryService } from '../types';
 import { calculatePaymentDetails } from '../utils/invoice';
 import { triggerAutoReceipt } from '../services/automation/automationEngine';
+import { getServicesByOutlet } from '../services/services';
+import { ShieldAlert } from 'lucide-react';
+import { canAccessOutlet } from '../utils/rbac';
 
 export function POSPage() {
   const navigate = useNavigate();
@@ -70,54 +73,34 @@ export function POSPage() {
     return unsubscribe;
   }, [tenantId, activeOutletId, currentUser?.uid]);
 
-  // Sync active services under specific active outlet in real time
+  const [loadingServices, setLoadingServices] = useState<boolean>(false);
+
+  // Load services based on active outlet using the required SERVICES FOUNDATION engine
   useEffect(() => {
-    if (!tenantId || !activeOutletId) {
+    if (!tenantId) {
       setActiveOutletServices([]);
       return;
     }
 
-    const servicesRef = collection(db, 'tenants', tenantId, 'services');
-    const q = query(
-      servicesRef,
-      where('active', '==', true),
-      where('isDeleted', '==', false),
-      where('outletIds', 'array-contains', activeOutletId),
-      orderBy('name')
-    );
+    const currentOutletId = activeOutletId || outlets.find(o => o.isMainOutlet)?.outletId || outlets[0]?.outletId;
+    if (!currentOutletId) {
+      setActiveOutletServices([]);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: LaundryService[] = [];
-      snapshot.forEach((docSnap) => {
-        const item = docSnap.data() as LaundryService;
-        list.push({
-          ...item,
-          isActive: item.active !== undefined ? item.active : item.isActive,
-          type: item.type || item.category || 'other',
-          pricePerUnit: item.pricePerUnit || item.price || 0,
-          estimatedDays: item.estimatedDays || Math.ceil((item.estimatedDurationHours || 24) / 24)
-        });
+    setLoadingServices(true);
+    getServicesByOutlet(tenantId, currentOutletId, true)
+      .then((data) => {
+        setActiveOutletServices(data || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load services for outlet:", err);
+        setActiveOutletServices([]);
+      })
+      .finally(() => {
+        setLoadingServices(false);
       });
-      setActiveOutletServices(list);
-    }, (error) => {
-      console.warn("Failed to subscribe active services for outlet:", error);
-      // Fallback in-memory filter if query fails or index is building
-      const fallback = services.filter(s => 
-        (s.active || s.isActive) && 
-        !s.isDeleted && 
-        (s.outletIds || []).includes(activeOutletId)
-      ).map(item => ({
-        ...item,
-        isActive: item.active !== undefined ? item.active : item.isActive,
-        type: item.type || item.category || 'other',
-        pricePerUnit: item.pricePerUnit || item.price || 0,
-        estimatedDays: item.estimatedDays || Math.ceil((item.estimatedDurationHours || 24) / 24)
-      }));
-      setActiveOutletServices(fallback);
-    });
-
-    return unsubscribe;
-  }, [tenantId, activeOutletId, services]);
+  }, [tenantId, activeOutletId, outlets]);
 
   const currentRole = userProfile?.role || 'kasir';
 
@@ -355,6 +338,21 @@ export function POSPage() {
 
   const activeOutletObj = outlets.find(o => o.outletId === activeOutletId);
 
+  if (activeOutletId && !canAccessOutlet(userProfile, activeOutletId)) {
+    return (
+      <div className="h-[calc(100vh-140px)] flex flex-col justify-center items-center text-slate-500 p-8 text-center bg-slate-50 rounded-2xl mx-6 my-4 border border-slate-200">
+        <ShieldAlert className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
+        <h2 className="text-lg font-extrabold text-slate-800">Akses Cabang Terbatas</h2>
+        <p className="text-sm text-slate-500 mt-2 max-w-md">
+          Akun Anda ({userProfile?.role}) tidak diberikan wewenang untuk melihat atau memproses transaksi di cabang <strong>{activeOutletObj?.name || activeOutletId}</strong>.
+        </p>
+        <p className="text-xs text-slate-400 mt-1 max-w-sm">
+          Silakan hubungi pemilik usaha (owner) atau admin untuk mendaftarkan akun Anda di cabang ini.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col overflow-hidden">
       {!loadingShiftCheck && !activeShift && (
@@ -378,6 +376,7 @@ export function POSPage() {
         activeOutletId={activeOutletId || ''}
         onAddCustomer={handleAddCustomerSync}
         onAddTransaction={handleCheckoutTransaction}
+        loadingServices={loadingServices}
         trackAction={(reads, writes) => {
           console.log(`Action metric tracked (reads: ${reads}, writes: ${writes})`);
         }}
