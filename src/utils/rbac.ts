@@ -64,15 +64,15 @@ export function canAccessRoute(role: string | null | undefined, path: string): b
 
   // KASIR has a targeted set of accessible interfaces
   if (role === 'kasir') {
-    const allowed = ['/dashboard', '/pos', '/queues', '/customers', '/unauthorized'];
-    return allowed.some(p => cleanPath === p || cleanPath.startsWith(p + '/'));
-  }
+  const allowed = ['/dashboard', '/pos', '/antrian', '/pelanggan', '/unauthorized'];
+  return allowed.some(p => cleanPath === p || cleanPath.startsWith(p + '/'));
+}
 
   // PEGAWAI is strictly scoped to the Operational queues list only
   if (role === 'pegawai') {
-    const allowed = ['/queues', '/unauthorized'];
-    return allowed.some(p => cleanPath === p || cleanPath.startsWith(p + '/'));
-  }
+  const allowed = ['/antrian', '/unauthorized'];
+  return allowed.some(p => cleanPath === p || cleanPath.startsWith(p + '/'));
+}
 
   return false;
 }
